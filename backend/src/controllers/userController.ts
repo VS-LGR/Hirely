@@ -1,0 +1,132 @@
+import { Response, NextFunction } from 'express'
+import { createError } from '../middleware/errorHandler'
+import { AuthRequest } from '../middleware/auth'
+import { db } from '../database/connection'
+
+export const getUserProfile = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      throw createError('Não autenticado', 401)
+    }
+
+    const result = await db.query(
+      `SELECT u.id, u.email, u.name, u.role, u.bio, u.skills, u.experience, u.education, u.created_at,
+       COALESCE(
+         json_agg(
+           json_build_object('id', t.id, 'name', t.name, 'category', t.category)
+         ) FILTER (WHERE t.id IS NOT NULL),
+         '[]'
+       ) as tags
+       FROM users u
+       LEFT JOIN user_tags ut ON u.id = ut.user_id
+       LEFT JOIN tags t ON ut.tag_id = t.id
+       WHERE u.id = $1
+       GROUP BY u.id`,
+      [req.user.id]
+    )
+
+    if (result.rows.length === 0) {
+      throw createError('Usuário não encontrado', 404)
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          ...result.rows[0],
+          tags: result.rows[0].tags || [],
+        },
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const updateUserProfile = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      throw createError('Não autenticado', 401)
+    }
+
+    const { name, bio, skills, experience, education, tag_ids } = req.body
+
+    // Iniciar transação
+    await db.query('BEGIN')
+
+    try {
+      const result = await db.query(
+        `UPDATE users SET
+          name = COALESCE($1, name),
+          bio = COALESCE($2, bio),
+          skills = COALESCE($3, skills),
+          experience = COALESCE($4, experience),
+          education = COALESCE($5, education),
+          updated_at = NOW()
+        WHERE id = $6
+        RETURNING id, email, name, role, bio, skills, experience, education, created_at`,
+        [name, bio, skills, experience, education, req.user.id]
+      )
+
+      // Atualizar tags se fornecidas
+      if (tag_ids !== undefined) {
+        // Remover tags existentes
+        await db.query('DELETE FROM user_tags WHERE user_id = $1', [req.user.id])
+
+        // Inserir novas tags
+        if (Array.isArray(tag_ids) && tag_ids.length > 0) {
+          for (const tagId of tag_ids) {
+            await db.query(
+              'INSERT INTO user_tags (user_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              [req.user.id, tagId]
+            )
+          }
+        }
+      }
+
+      await db.query('COMMIT')
+
+      // Buscar usuário com tags atualizadas
+      const userWithTags = await db.query(
+        `SELECT u.id, u.email, u.name, u.role, u.bio, u.skills, u.experience, u.education, u.created_at,
+         COALESCE(
+           json_agg(
+             json_build_object('id', t.id, 'name', t.name, 'category', t.category)
+           ) FILTER (WHERE t.id IS NOT NULL),
+           '[]'
+         ) as tags
+         FROM users u
+         LEFT JOIN user_tags ut ON u.id = ut.user_id
+         LEFT JOIN tags t ON ut.tag_id = t.id
+         WHERE u.id = $1
+         GROUP BY u.id`,
+        [req.user.id]
+      )
+
+      res.json({
+        success: true,
+        data: {
+          user: {
+            ...userWithTags.rows[0],
+            tags: userWithTags.rows[0].tags || [],
+          },
+        },
+      })
+    } catch (error) {
+      await db.query('ROLLBACK')
+      throw error
+    }
+  } catch (error) {
+    next(error)
+  }
+}
+
+

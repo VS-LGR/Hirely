@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 245 241 232; /* #F5F1E8 */
+    --foreground: 139 115 85; /* #8B7355 */
+    
+    --card: 245 241 232; /* #F5F1E8 */
+    --card-foreground: 139 115 85; /* #8B7355 */
+    
+    --popover: 245 241 232; /* #F5F1E8 */
+    --popover-foreground: 139 115 85; /* #8B7355 */
+    
+    --primary: 166 139 111; /* #A68B6F */
+    --primary-foreground: 245 241 232; /* #F5F1E8 */
+    
+    --secondary: 201 184 165; /* #C9B8A5 */
+    --secondary-foreground: 139 115 85; /* #8B7355 */
+    
+    --muted: 232 221 212; /* #E8DDD4 */
+    --muted-foreground: 184 160 130; /* #B8A082 */
+    
+    --accent: 166 139 111; /* #A68B6F */
+    --accent-foreground: 245 241 232; /* #F5F1E8 */
+    
+    --destructive: 196 165 160; /* #C4A5A0 */
+    --destructive-foreground: 245 241 232; /* #F5F1E8 */
+    
+    --border: 212 196 176; /* #D4C4B0 */
+    --input: 232 221 212; /* #E8DDD4 */
+    --ring: 166 139 111; /* #A68B6F */
+    
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+
