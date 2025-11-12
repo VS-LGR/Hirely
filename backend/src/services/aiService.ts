@@ -7,11 +7,36 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+export interface ResumeAnalysis {
+  skills: string[]
+  experience: Array<{
+    company: string
+    position: string
+    startDate: string
+    endDate?: string
+    description?: string
+  }>
+  education: Array<{
+    institution: string
+    degree: string
+    field: string
+    startDate: string
+    endDate?: string
+  }>
+  bio?: string
+  suggestedTags: Array<{ name: string; category: string }>
+  strengths: string[]
+  suggestions: string[]
+}
+
 export interface AIService {
   generateJobDescription: (title: string, requirements: string[]) => Promise<string>
   analyzeResume: (resume: string) => Promise<any>
+  analyzeResumeDetailed: (resumeText: string) => Promise<ResumeAnalysis>
   suggestImprovements: (text: string, type: 'resume' | 'cover_letter') => Promise<string>
   generateMatchScore: (jobDescription: string, candidateProfile: string) => Promise<number>
+  suggestTags: (profile: { bio?: string; skills?: string[]; experience?: any[] }) => Promise<Array<{ name: string; category: string }>>
+  chatWithAssistant: (message: string, context?: { profile?: any; history?: any[] }) => Promise<string>
 }
 
 class AIServiceImpl implements AIService {
@@ -167,6 +192,208 @@ Retorne APENAS um número de 0 a 100 representando o score de compatibilidade.`
     } catch (error) {
       console.error('Error generating match score:', error)
       return 0
+    }
+  }
+
+  async analyzeResumeDetailed(resumeText: string): Promise<ResumeAnalysis> {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        // Se não houver API key, retornar estrutura vazia
+        return {
+          skills: [],
+          experience: [],
+          education: [],
+          suggestedTags: [],
+          strengths: [],
+          suggestions: ['Configure a chave da API OpenAI para análise completa do currículo'],
+        }
+      }
+
+      const prompt = `Analise o seguinte currículo e extraia informações estruturadas em formato JSON:
+
+${resumeText}
+
+Retorne APENAS um JSON válido com a seguinte estrutura:
+{
+  "skills": ["habilidade1", "habilidade2", ...],
+  "experience": [
+    {
+      "company": "Nome da Empresa",
+      "position": "Cargo",
+      "startDate": "YYYY-MM",
+      "endDate": "YYYY-MM" ou null,
+      "description": "Descrição das responsabilidades"
+    }
+  ],
+  "education": [
+    {
+      "institution": "Nome da Instituição",
+      "degree": "Grau (ex: Bacharelado, Mestrado)",
+      "field": "Área de estudo",
+      "startDate": "YYYY-MM",
+      "endDate": "YYYY-MM" ou null
+    }
+  ],
+  "bio": "Resumo profissional em 2-3 frases",
+  "suggestedTags": [
+    {"name": "Nome da Tag", "category": "Categoria"}
+  ],
+  "strengths": ["ponto forte 1", "ponto forte 2", ...],
+  "suggestions": ["sugestão 1", "sugestão 2", ...]
+}
+
+IMPORTANTE: Retorne APENAS o JSON, sem texto adicional.`
+
+      const completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um especialista em análise de currículos. Sempre retorne APENAS JSON válido, sem texto adicional antes ou depois.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 2000,
+      })
+
+      let content = completion.choices[0]?.message?.content || '{}'
+      // Tentar extrair JSON se houver texto adicional
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        content = jsonMatch[0]
+      }
+      
+      const parsed = JSON.parse(content)
+      
+      return {
+        skills: parsed.skills || [],
+        experience: parsed.experience || [],
+        education: parsed.education || [],
+        bio: parsed.bio,
+        suggestedTags: parsed.suggestedTags || [],
+        strengths: parsed.strengths || [],
+        suggestions: parsed.suggestions || [],
+      }
+    } catch (error) {
+      console.error('Error analyzing resume:', error)
+      throw new Error('Erro ao analisar currículo')
+    }
+  }
+
+  async suggestTags(profile: { bio?: string; skills?: string[]; experience?: any[] }): Promise<Array<{ name: string; category: string }>> {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        // Se não houver API key, retornar array vazio
+        return []
+      }
+
+      const profileText = `
+Bio: ${profile.bio || 'Não informado'}
+Habilidades: ${profile.skills?.join(', ') || 'Não informado'}
+Experiência: ${JSON.stringify(profile.experience || [])}
+`
+
+      const prompt = `Com base no perfil do candidato abaixo, sugira tags (habilidades e competências) relevantes:
+
+${profileText}
+
+Retorne APENAS um JSON com array de tags:
+{
+  "tags": [
+    {"name": "Nome da Tag", "category": "Categoria (ex: Tecnologia, Design, Administração)"}
+  ]
+}
+
+Use categorias como: Tecnologia, Design, Produção, Agricultura, Limpeza, Saúde, Educação, Vendas, Administração, Finanças, Atendimento, Comercial.`
+
+      const completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um especialista em recrutamento. Sugira tags relevantes baseadas no perfil do candidato. Retorne APENAS JSON válido.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.5,
+        max_tokens: 500,
+      })
+
+      let content = completion.choices[0]?.message?.content || '{"tags": []}'
+      // Tentar extrair JSON se houver texto adicional
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        content = jsonMatch[0]
+      }
+      
+      const parsed = JSON.parse(content)
+      return parsed.tags || []
+    } catch (error) {
+      console.error('Error suggesting tags:', error)
+      return []
+    }
+  }
+
+  async chatWithAssistant(message: string, context?: { profile?: any; history?: any[] }): Promise<string> {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        // Se não houver API key, retornar mensagem informativa
+        return 'Desculpe, o assistente de IA não está disponível no momento. Por favor, configure a chave da API OpenAI para usar esta funcionalidade.'
+      }
+
+      const systemPrompt = `Você é um assistente de carreira especializado em ajudar candidatos a:
+- Construir um perfil profissional completo
+- Identificar e destacar suas habilidades
+- Melhorar seu currículo e perfil
+- Sugerir tags e competências relevantes
+- Dar conselhos sobre como se destacar no mercado de trabalho
+
+Seja empático, encorajador e prático. Responda sempre em português brasileiro.`
+
+      const messages: any[] = [
+        { role: 'system', content: systemPrompt },
+      ]
+
+      // Adicionar contexto do perfil se disponível
+      if (context?.profile) {
+        messages.push({
+          role: 'system',
+          content: `Contexto do perfil do candidato:
+Nome: ${context.profile.name || 'Não informado'}
+Bio: ${context.profile.bio || 'Não informado'}
+Habilidades: ${context.profile.skills?.join(', ') || 'Nenhuma'}
+Experiência: ${JSON.stringify(context.profile.experience || [])}
+Educação: ${JSON.stringify(context.profile.education || [])}`,
+        })
+      }
+
+      // Adicionar histórico de conversa
+      if (context?.history && context.history.length > 0) {
+        context.history.forEach((msg: any) => {
+          messages.push({ role: msg.role, content: msg.content })
+        })
+      }
+
+      messages.push({ role: 'user', content: message })
+
+      const completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+        messages,
+        temperature: 0.7,
+        max_tokens: 800,
+      })
+
+      return completion.choices[0]?.message?.content || 'Desculpe, não consegui processar sua mensagem.'
+    } catch (error) {
+      console.error('Error in chat:', error)
+      throw new Error('Erro ao processar mensagem')
     }
   }
 }
