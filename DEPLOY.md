@@ -101,12 +101,17 @@ Deve retornar:
 
 1. No Vercel Dashboard, clique em **Add New** > **Project**
 2. Importe o mesmo repositório
-3. Configure:
-   - **Framework Preset**: Next.js (detectado automaticamente)
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm run build` (padrão)
-   - **Output Directory**: `.next` (padrão)
-   - **Install Command**: `npm install`
+3. **IMPORTANTE**: Configure o **Root Directory** primeiro:
+   - Clique em **"Configure Project"** ou **"Edit"**
+   - Em **Root Directory**, selecione **"Edit"** e digite: `frontend`
+   - Isso é CRUCIAL - sem isso, a Vercel tentará fazer build na raiz do projeto
+4. Configure as outras opções (geralmente detectadas automaticamente):
+   - **Framework Preset**: Next.js (deve ser detectado automaticamente)
+   - **Build Command**: `npm run build` (ou deixe vazio para usar o padrão)
+   - **Output Directory**: `.next` (ou deixe vazio para usar o padrão)
+   - **Install Command**: `npm install` (ou deixe vazio para usar o padrão)
+
+**Nota**: O arquivo `frontend/vercel.json` já está configurado para garantir o build correto. Certifique-se apenas de que o **Root Directory** está definido como `frontend` no dashboard da Vercel.
 
 ### 4.2. Configurar Variáveis de Ambiente
 
