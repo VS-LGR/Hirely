@@ -55,13 +55,41 @@ export function ResumeUpload({ onAnalysisComplete }: ResumeUploadProps) {
       setError('')
     },
     onError: (err: any) => {
-      const errorMessage = err.response?.data?.error?.message || err.message || 'Erro ao fazer upload do currículo'
+      console.error('Upload error:', err)
+      
+      // Verificar se a resposta não é JSON (pode ser HTML/XML de erro)
+      let errorMessage = 'Erro ao fazer upload do currículo'
+      
+      if (err.response) {
+        const contentType = err.response.headers['content-type'] || ''
+        
+        // Se a resposta não é JSON, pode ser uma página de erro HTML/XML
+        if (!contentType.includes('application/json')) {
+          const status = err.response.status
+          if (status === 404) {
+            errorMessage = 'Endpoint não encontrado. Verifique se o backend está configurado corretamente.'
+          } else if (status === 405) {
+            errorMessage = 'Método não permitido. Verifique a configuração do servidor.'
+          } else if (status === 500) {
+            errorMessage = 'Erro interno do servidor. Verifique os logs do backend.'
+          } else {
+            errorMessage = `Erro do servidor (${status}). A resposta não está em formato JSON.`
+          }
+        } else {
+          // Resposta é JSON, tentar extrair mensagem
+          errorMessage = err.response?.data?.error?.message || err.response?.data?.message || err.message || errorMessage
+        }
+      } else if (err.message) {
+        errorMessage = err.message
+      }
       
       // Mensagens mais amigáveis para erros específicos
       if (errorMessage.includes('quota') || errorMessage.includes('cota')) {
         setError('Cota da API OpenAI excedida. Por favor, verifique seu plano e detalhes de cobrança na OpenAI.')
       } else if (errorMessage.includes('API key') || errorMessage.includes('chave')) {
         setError('Chave da API OpenAI não configurada ou inválida.')
+      } else if (errorMessage.includes('Unexpected token') || errorMessage.includes('is not valid JSON')) {
+        setError('O servidor retornou uma resposta inválida. Verifique se o backend está funcionando corretamente.')
       } else {
         setError(errorMessage)
       }

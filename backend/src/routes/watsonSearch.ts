@@ -7,9 +7,11 @@ export const watsonSearchRoutes = Router()
 watsonSearchRoutes.get('/health', watsonSearchHealth)
 
 // Endpoint de busca para Watson Assistant
-// O Watson faz POST com a query
+// O Watson pode fazer POST ou GET com a query
 watsonSearchRoutes.post('/search', watsonSearch)
-
-// Também aceita GET para testes
 watsonSearchRoutes.get('/search', watsonSearch)
+
+// Endpoint alternativo (caso o Watson use outro path)
+watsonSearchRoutes.post('/', watsonSearch)
+watsonSearchRoutes.get('/', watsonSearch)
 
