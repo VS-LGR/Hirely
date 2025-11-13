@@ -27,7 +27,8 @@ api.interceptors.request.use((config) => {
     } else {
       console.log('No token found in localStorage')
     }
-    console.log('Making request to:', config.baseURL + config.url, 'Headers:', { Authorization: token ? 'Bearer ***' : 'none' })
+    const requestURL = config.baseURL ? `${config.baseURL}${config.url || ''}` : config.url || ''
+    console.log('Making request to:', requestURL, 'Headers:', { Authorization: token ? 'Bearer ***' : 'none' })
   }
   return config
 })
