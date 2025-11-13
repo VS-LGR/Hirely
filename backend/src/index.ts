@@ -16,10 +16,15 @@ dotenv.config()
 const app = express()
 const PORT = process.env.PORT || 3001
 
-// Middleware
-app.use(cors())
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+// Configurar CORS para produção
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || process.env.NEXT_PUBLIC_API_URL || '*',
+  credentials: true,
+}
+
+app.use(cors(corsOptions))
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // Root route
 app.get('/', (req, res) => {
@@ -34,14 +39,15 @@ app.get('/', (req, res) => {
       ai: '/api/ai',
       tags: '/api/tags',
       stats: '/api/stats',
-      applications: '/api/applications'
+      applications: '/api/applications',
+      watsonSearch: '/api/watson-search'
     }
   })
 })
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Hirely API is running' })
+  res.json({ status: 'ok', message: 'Hirely API is running', timestamp: new Date().toISOString() })
 })
 
 // Routes
@@ -57,7 +63,14 @@ app.use('/api/watson-search', watsonSearchRoutes)
 // Error handler
 app.use(errorHandler)
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`)
-})
+// Iniciar servidor apenas se não estiver rodando no Vercel
+// No Vercel, o arquivo api/index.ts exporta o app
+if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`)
+  })
+}
+
+// Exportar app para uso no Vercel
+export default app
 

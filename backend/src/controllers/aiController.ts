@@ -4,6 +4,7 @@ import { AuthRequest } from '../middleware/auth'
 import { aiService } from '../services/aiService'
 import { watsonService } from '../services/watsonService'
 import { extractTextFromFile } from '../utils/resumeParser'
+import { uploadFileToSupabase, downloadFileFromSupabase, deleteFileFromSupabase } from '../utils/supabaseStorage'
 import fs from 'fs'
 import path from 'path'
 
@@ -105,6 +106,9 @@ export const uploadAndAnalyzeResume = async (
   next: NextFunction
 ) => {
   let filePath: string | null = null
+  let supabaseFilePath: string | null = null
+  const useSupabase = !!process.env.SUPABASE_URL
+
   try {
     if (!req.user) {
       throw createError('Não autenticado', 401)
@@ -118,13 +122,38 @@ export const uploadAndAnalyzeResume = async (
       throw createError('Arquivo não fornecido', 400)
     }
 
-    filePath = req.file.path
-    console.log('Processing file:', filePath)
-
     try {
+      let fileBuffer: Buffer
+      let fileName: string
+
+      if (useSupabase && req.file.buffer) {
+        // Modo Supabase: arquivo está em memória (multer memory storage)
+        fileBuffer = req.file.buffer
+        fileName = req.file.originalname
+
+        // Upload para Supabase Storage
+        console.log('Uploading file to Supabase...')
+        const uploadResult = await uploadFileToSupabase(
+          fileBuffer,
+          fileName,
+          req.file.mimetype
+        )
+        supabaseFilePath = uploadResult.path
+        console.log('File uploaded to Supabase:', supabaseFilePath)
+
+        // Baixar arquivo do Supabase para processar
+        fileBuffer = await downloadFileFromSupabase(supabaseFilePath)
+      } else {
+        // Modo local: arquivo está em disco
+        filePath = req.file.path
+        fileName = req.file.originalname
+        console.log('Processing local file:', filePath)
+        fileBuffer = fs.readFileSync(filePath)
+      }
+
       // Extrair texto do arquivo
       console.log('Extracting text from file...')
-      const resumeText = await extractTextFromFile(filePath)
+      const resumeText = await extractTextFromFile(fileBuffer, fileName)
 
       if (!resumeText || resumeText.trim().length === 0) {
         throw createError('Não foi possível extrair texto do arquivo. Certifique-se de que o arquivo é um PDF ou DOCX válido.', 400)
@@ -139,12 +168,19 @@ export const uploadAndAnalyzeResume = async (
       console.log('Analysis complete')
 
       // Deletar arquivo após análise
-      if (filePath && fs.existsSync(filePath)) {
+      if (useSupabase && supabaseFilePath) {
+        try {
+          await deleteFileFromSupabase(supabaseFilePath)
+          console.log('File deleted from Supabase successfully')
+        } catch (deleteError) {
+          console.error('Error deleting file from Supabase:', deleteError)
+        }
+      } else if (filePath && fs.existsSync(filePath)) {
         try {
           fs.unlinkSync(filePath)
-          console.log('File deleted successfully')
+          console.log('Local file deleted successfully')
         } catch (unlinkError) {
-          console.error('Error deleting file:', unlinkError)
+          console.error('Error deleting local file:', unlinkError)
         }
       }
 
@@ -158,11 +194,17 @@ export const uploadAndAnalyzeResume = async (
       console.error('Error processing file:', parseError)
       
       // Deletar arquivo em caso de erro
-      if (filePath && fs.existsSync(filePath)) {
+      if (useSupabase && supabaseFilePath) {
+        try {
+          await deleteFileFromSupabase(supabaseFilePath)
+        } catch (deleteError) {
+          console.error('Error deleting file from Supabase:', deleteError)
+        }
+      } else if (filePath && fs.existsSync(filePath)) {
         try {
           fs.unlinkSync(filePath)
         } catch (unlinkError) {
-          console.error('Error deleting file:', unlinkError)
+          console.error('Error deleting local file:', unlinkError)
         }
       }
       

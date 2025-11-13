@@ -13,6 +13,7 @@
     "db:seed:tags": "tsx src/database/seedTags.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.81.1",
     "all": "^0.0.0",
     "axios": "^1.6.5",
     "bcryptjs": "^2.4.3",
