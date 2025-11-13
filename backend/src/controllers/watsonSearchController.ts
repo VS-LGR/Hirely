@@ -52,16 +52,15 @@ export const watsonSearch = async (
       console.log('No query provided, returning general tips')
       const generalTips = getCareerTips('geral')
       return res.json({
-        matching_results: generalTips.length,
-        results: generalTips.map((tip, index) => ({
-          id: `tip-${index}`,
-          title: tip.title,
-          text: tip.content,
-          metadata: {
-            type: 'career_tip',
-            category: tip.category,
+        search_results: generalTips.map((tip, index) => ({
+          result_metadata: {
+            score: 0.8,
           },
-          score: 0.8,
+          title: tip.title,
+          body: tip.content,
+          highlight: {
+            body: [tip.content],
+          },
         })),
       })
     }
@@ -152,15 +151,20 @@ export const watsonSearch = async (
 
     console.log('Returning results:', knowledgeBase.length)
 
-    // Formato de resposta compatível com Watson Assistant
+    // Formato de resposta compatível com Watson Assistant Custom Service
+    // Documentação: https://cloud.ibm.com/docs/watson-assistant?topic=watson-assistant-search-custom-service
     res.json({
-      matching_results: knowledgeBase.length,
-      results: knowledgeBase.map((doc) => ({
-        id: doc.id,
+      search_results: knowledgeBase.map((doc) => ({
+        result_metadata: {
+          score: 1.0, // Relevância (pode ser calculada)
+        },
         title: doc.title,
-        text: doc.text,
-        metadata: doc.metadata,
-        score: 1.0, // Relevância (pode ser calculada)
+        body: doc.text,
+        url: doc.metadata?.url || undefined, // Opcional
+        // highlight é opcional e será usado em vez de body para Conversational Search
+        highlight: {
+          body: [doc.text], // Usar o texto como highlight
+        },
       })),
     })
   } catch (error) {
@@ -168,16 +172,15 @@ export const watsonSearch = async (
     // Retornar dicas gerais em caso de erro, não vazio
     const generalTips = getCareerTips('geral')
     res.json({
-      matching_results: generalTips.length,
-      results: generalTips.map((tip, index) => ({
-        id: `error-tip-${index}`,
-        title: tip.title,
-        text: tip.content,
-        metadata: {
-          type: 'career_tip',
-          category: tip.category,
+      search_results: generalTips.map((tip, index) => ({
+        result_metadata: {
+          score: 0.5,
         },
-        score: 0.5,
+        title: tip.title,
+        body: tip.content,
+        highlight: {
+          body: [tip.content],
+        },
       })),
     })
   }
