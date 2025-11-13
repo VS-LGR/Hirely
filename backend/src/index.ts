@@ -9,6 +9,7 @@ import { aiRoutes } from './routes/ai'
 import { tagRoutes } from './routes/tags'
 import { statsRoutes } from './routes/stats'
 import { applicationRoutes } from './routes/applications'
+import { watsonSearchRoutes } from './routes/watsonSearch'
 
 dotenv.config()
 
@@ -51,6 +52,7 @@ app.use('/api/ai', aiRoutes)
 app.use('/api/tags', tagRoutes)
 app.use('/api/stats', statsRoutes)
 app.use('/api/applications', applicationRoutes)
+app.use('/api/watson-search', watsonSearchRoutes)
 
 // Error handler
 app.use(errorHandler)

@@ -55,7 +55,16 @@ export function ResumeUpload({ onAnalysisComplete }: ResumeUploadProps) {
       setError('')
     },
     onError: (err: any) => {
-      setError(err.response?.data?.error?.message || 'Erro ao fazer upload do currículo')
+      const errorMessage = err.response?.data?.error?.message || err.message || 'Erro ao fazer upload do currículo'
+      
+      // Mensagens mais amigáveis para erros específicos
+      if (errorMessage.includes('quota') || errorMessage.includes('cota')) {
+        setError('Cota da API OpenAI excedida. Por favor, verifique seu plano e detalhes de cobrança na OpenAI.')
+      } else if (errorMessage.includes('API key') || errorMessage.includes('chave')) {
+        setError('Chave da API OpenAI não configurada ou inválida.')
+      } else {
+        setError(errorMessage)
+      }
     },
   })
 

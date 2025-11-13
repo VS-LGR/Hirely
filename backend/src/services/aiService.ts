@@ -278,8 +278,47 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional.`
         strengths: parsed.strengths || [],
         suggestions: parsed.suggestions || [],
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error analyzing resume:', error)
+      console.error('Error details:', {
+        status: error.status,
+        statusCode: error.statusCode,
+        response: error.response,
+        message: error.message,
+      })
+      
+      // Tratar erro de quota excedida (pode vir em diferentes formatos)
+      const status = error.status || error.statusCode || error.response?.status
+      if (status === 429) {
+        throw new Error('Cota da API OpenAI excedida. Por favor, verifique seu plano e detalhes de cobrança na OpenAI.')
+      }
+      
+      // Verificar se a mensagem de erro menciona quota
+      if (error.message && (error.message.includes('quota') || error.message.includes('429'))) {
+        throw new Error('Cota da API OpenAI excedida. Por favor, verifique seu plano e detalhes de cobrança na OpenAI.')
+      }
+      
+      if (error.response) {
+        console.error('OpenAI API Error:', error.response.status, error.response.data)
+        const errorMessage = error.response.data?.error?.message || error.message
+        
+        // Mensagens mais amigáveis para erros comuns
+        if (error.response.status === 401) {
+          throw new Error('Chave da API OpenAI inválida. Verifique a configuração.')
+        }
+        if (error.response.status === 429) {
+          throw new Error('Cota da API OpenAI excedida. Por favor, verifique seu plano e detalhes de cobrança.')
+        }
+        if (error.response.status === 500 || error.response.status === 503) {
+          throw new Error('Serviço da OpenAI temporariamente indisponível. Tente novamente mais tarde.')
+        }
+        
+        throw new Error(`Erro na API OpenAI: ${errorMessage}`)
+      }
+      
+      if (error.message) {
+        throw error
+      }
       throw new Error('Erro ao analisar currículo')
     }
   }
@@ -335,18 +374,32 @@ Use categorias como: Tecnologia, Design, Produção, Agricultura, Limpeza, Saúd
       
       const parsed = JSON.parse(content)
       return parsed.tags || []
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error suggesting tags:', error)
+      
+      // Tratar erro de quota excedida - retornar array vazio silenciosamente
+      if (error.status === 429 || (error.response && error.response.status === 429)) {
+        console.warn('OpenAI quota exceeded for tag suggestions, returning empty array')
+        return []
+      }
+      
+      if (error.response) {
+        console.error('OpenAI API Error:', error.response.status, error.response.data)
+      }
+      // Retornar array vazio em caso de erro para não quebrar o fluxo
       return []
     }
   }
 
   async chatWithAssistant(message: string, context?: { profile?: any; history?: any[] }): Promise<string> {
     try {
-      if (!process.env.OPENAI_API_KEY) {
+      if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === '') {
+        console.warn('OPENAI_API_KEY not configured')
         // Se não houver API key, retornar mensagem informativa
-        return 'Desculpe, o assistente de IA não está disponível no momento. Por favor, configure a chave da API OpenAI para usar esta funcionalidade.'
+        return 'Desculpe, o assistente de IA não está disponível no momento. Por favor, configure a chave da API OpenAI (OPENAI_API_KEY) no arquivo .env do backend para usar esta funcionalidade.'
       }
+
+      console.log('Calling OpenAI API for chat...')
 
       const systemPrompt = `Você é um assistente de carreira especializado em ajudar candidatos a:
 - Construir um perfil profissional completo
@@ -390,14 +443,57 @@ Educação: ${JSON.stringify(context.profile.education || [])}`,
         max_tokens: 800,
       })
 
+      console.log('OpenAI API response received')
       return completion.choices[0]?.message?.content || 'Desculpe, não consegui processar sua mensagem.'
-    } catch (error) {
-      console.error('Error in chat:', error)
+    } catch (error: any) {
+      console.error('Error in chatWithAssistant:', error)
+      console.error('Error details:', {
+        status: error.status,
+        statusCode: error.statusCode,
+        response: error.response,
+        message: error.message,
+      })
+      
+      // Tratar erro de quota excedida (pode vir em diferentes formatos)
+      const status = error.status || error.statusCode || error.response?.status
+      if (status === 429) {
+        throw new Error('Cota da API OpenAI excedida. Por favor, verifique seu plano e detalhes de cobrança na OpenAI.')
+      }
+      
+      // Verificar se a mensagem de erro menciona quota
+      if (error.message && (error.message.includes('quota') || error.message.includes('429'))) {
+        throw new Error('Cota da API OpenAI excedida. Por favor, verifique seu plano e detalhes de cobrança na OpenAI.')
+      }
+      
+      if (error.response) {
+        console.error('OpenAI API Error:', error.response.status, error.response.data)
+        const errorMessage = error.response.data?.error?.message || error.message
+        
+        // Mensagens mais amigáveis para erros comuns
+        if (error.response.status === 401) {
+          throw new Error('Chave da API OpenAI inválida. Verifique a configuração.')
+        }
+        if (error.response.status === 429) {
+          throw new Error('Cota da API OpenAI excedida. Por favor, verifique seu plano e detalhes de cobrança.')
+        }
+        if (error.response.status === 500 || error.response.status === 503) {
+          throw new Error('Serviço da OpenAI temporariamente indisponível. Tente novamente mais tarde.')
+        }
+        
+        throw new Error(`Erro na API OpenAI: ${errorMessage}`)
+      }
+      
+      if (error.message) {
+        throw error
+      }
       throw new Error('Erro ao processar mensagem')
     }
   }
 }
 
 export const aiService = new AIServiceImpl()
+
+// Exportar também o watsonService para uso alternativo
+export { watsonService } from './watsonService'
 
 

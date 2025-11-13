@@ -195,7 +195,6 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-bege-light">
       <div className="container mx-auto px-4 py-8">
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Coluna principal - Formulário */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
@@ -302,19 +301,18 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </CardContent>
-            </form>
-          </Card>
+              </form>
+            </Card>
 
-          {/* Upload de Currículo */}
-          <ResumeUpload onAnalysisComplete={handleResumeAnalysis} />
-        </div>
-
-        {/* Coluna lateral - Assistente de IA */}
-        {showAIAssistant && (
-          <div className="lg:col-span-1">
-            <AIAssistant />
+            <ResumeUpload onAnalysisComplete={handleResumeAnalysis} />
           </div>
-        )}
+
+          {showAIAssistant && (
+            <div className="lg:col-span-1">
+              <AIAssistant />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

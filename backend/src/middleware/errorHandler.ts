@@ -14,7 +14,13 @@ export const errorHandler = (
   const statusCode = err.statusCode || 500
   const message = err.message || 'Internal Server Error'
 
-  console.error('Error:', err)
+  console.error('Error:', {
+    message: err.message,
+    statusCode,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+  })
 
   res.status(statusCode).json({
     success: false,

@@ -2,9 +2,19 @@ import { Request, Response, NextFunction } from 'express'
 import { createError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { aiService } from '../services/aiService'
+import { watsonService } from '../services/watsonService'
 import { extractTextFromFile } from '../utils/resumeParser'
 import fs from 'fs'
 import path from 'path'
+
+// Escolher qual serviço usar (Watson se configurado, senão OpenAI)
+const getAIService = () => {
+  const useWatson = 
+    process.env.USE_WATSON === 'true' ||
+    (process.env.WATSON_ASSISTANT_API_KEY && process.env.WATSON_NLU_API_KEY)
+  
+  return useWatson ? watsonService : aiService
+}
 
 export const generateJobDescription = async (
   req: Request,
@@ -94,6 +104,7 @@ export const uploadAndAnalyzeResume = async (
   res: Response,
   next: NextFunction
 ) => {
+  let filePath: string | null = null
   try {
     if (!req.user) {
       throw createError('Não autenticado', 401)
@@ -107,22 +118,34 @@ export const uploadAndAnalyzeResume = async (
       throw createError('Arquivo não fornecido', 400)
     }
 
-    const filePath = req.file.path
+    filePath = req.file.path
+    console.log('Processing file:', filePath)
 
     try {
       // Extrair texto do arquivo
+      console.log('Extracting text from file...')
       const resumeText = await extractTextFromFile(filePath)
 
       if (!resumeText || resumeText.trim().length === 0) {
         throw createError('Não foi possível extrair texto do arquivo. Certifique-se de que o arquivo é um PDF ou DOCX válido.', 400)
       }
 
+      console.log('Text extracted, length:', resumeText.length)
+
       // Analisar com IA
-      const analysis = await aiService.analyzeResumeDetailed(resumeText)
+      console.log('Analyzing with AI...')
+      const service = getAIService()
+      const analysis = await service.analyzeResumeDetailed(resumeText)
+      console.log('Analysis complete')
 
       // Deletar arquivo após análise
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath)
+      if (filePath && fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath)
+          console.log('File deleted successfully')
+        } catch (unlinkError) {
+          console.error('Error deleting file:', unlinkError)
+        }
       }
 
       res.json({
@@ -132,8 +155,10 @@ export const uploadAndAnalyzeResume = async (
         },
       })
     } catch (parseError: any) {
+      console.error('Error processing file:', parseError)
+      
       // Deletar arquivo em caso de erro
-      if (fs.existsSync(filePath)) {
+      if (filePath && fs.existsSync(filePath)) {
         try {
           fs.unlinkSync(filePath)
         } catch (unlinkError) {
@@ -146,7 +171,8 @@ export const uploadAndAnalyzeResume = async (
       }
       throw parseError
     }
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Error in uploadAndAnalyzeResume:', error)
     next(error)
   }
 }
@@ -168,19 +194,33 @@ export const suggestTagsForProfile = async (
 
     const { bio, skills, experience } = req.body
 
-    const suggestedTags = await aiService.suggestTags({
-      bio,
-      skills,
-      experience,
-    })
+    console.log('Suggesting tags for profile:', { bio, skills, experience })
 
-    res.json({
-      success: true,
-      data: {
-        tags: suggestedTags,
-      },
-    })
-  } catch (error) {
+    try {
+      const service = getAIService()
+      const suggestedTags = await service.suggestTags({
+        bio,
+        skills,
+        experience,
+      })
+
+      console.log('Tags suggested:', suggestedTags)
+
+      res.json({
+        success: true,
+        data: {
+          tags: suggestedTags,
+        },
+      })
+    } catch (aiError: any) {
+      console.error('Error in suggestTags:', aiError)
+      throw createError(
+        aiError.message || 'Erro ao sugerir tags',
+        aiError.statusCode || 500
+      )
+    }
+  } catch (error: any) {
+    console.error('Error in suggestTagsForProfile:', error)
     next(error)
   }
 }
@@ -206,61 +246,73 @@ export const chatWithAssistant = async (
       throw createError('Mensagem é obrigatória', 400)
     }
 
-    // Buscar perfil do usuário para contexto
-    const { db } = await import('../database/connection')
-    const userProfile = await db.query(
-      `SELECT u.id, u.name, u.bio, u.skills, u.experience, u.education,
-       COALESCE(
-         json_agg(
-           json_build_object('id', t.id, 'name', t.name, 'category', t.category)
-         ) FILTER (WHERE t.id IS NOT NULL),
-         '[]'::json
-       ) as tags
-       FROM users u
-       LEFT JOIN user_tags ut ON u.id = ut.user_id
-       LEFT JOIN tags t ON ut.tag_id = t.id
-       WHERE u.id = $1
-       GROUP BY u.id`,
-      [req.user.id]
-    )
-
-    if (userProfile.rows.length === 0) {
-      throw createError('Perfil do usuário não encontrado', 404)
-    }
-
-    const profile = userProfile.rows[0]
-    let tags = []
     try {
-      if (Array.isArray(profile.tags)) {
-        tags = profile.tags
-      } else if (profile.tags) {
-        tags = typeof profile.tags === 'string' ? JSON.parse(profile.tags) : profile.tags
+      // Buscar perfil do usuário para contexto
+      const { db } = await import('../database/connection')
+      const userProfile = await db.query(
+        `SELECT u.id, u.name, u.bio, u.skills, u.experience, u.education,
+         COALESCE(
+           json_agg(
+             json_build_object('id', t.id, 'name', t.name, 'category', t.category)
+           ) FILTER (WHERE t.id IS NOT NULL),
+           '[]'::json
+         ) as tags
+         FROM users u
+         LEFT JOIN user_tags ut ON u.id = ut.user_id
+         LEFT JOIN tags t ON ut.tag_id = t.id
+         WHERE u.id = $1
+         GROUP BY u.id`,
+        [req.user.id]
+      )
+
+      if (userProfile.rows.length === 0) {
+        throw createError('Perfil do usuário não encontrado', 404)
       }
-    } catch (e) {
-      tags = []
+
+      const profile = userProfile.rows[0]
+      let tags = []
+      try {
+        if (Array.isArray(profile.tags)) {
+          tags = profile.tags
+        } else if (profile.tags) {
+          tags = typeof profile.tags === 'string' ? JSON.parse(profile.tags) : profile.tags
+        }
+      } catch (e) {
+        console.error('Error parsing tags:', e)
+        tags = []
+      }
+
+      const context = {
+        profile: {
+          id: profile.id || req.user.id, // Incluir ID do usuário para o Watson
+          name: profile.name || '',
+          bio: profile.bio || '',
+          skills: profile.skills || [],
+          experience: profile.experience || [],
+          education: profile.education || [],
+          tags,
+        },
+        history: history || [],
+      }
+
+      const service = getAIService()
+      const response = await service.chatWithAssistant(message, context)
+
+      res.json({
+        success: true,
+        data: {
+          response,
+        },
+      })
+    } catch (dbError: any) {
+      console.error('Error in chatWithAssistant:', dbError)
+      throw createError(
+        dbError.message || 'Erro ao processar mensagem',
+        dbError.statusCode || 500
+      )
     }
-
-    const context = {
-      profile: {
-        name: profile.name || '',
-        bio: profile.bio || '',
-        skills: profile.skills || [],
-        experience: profile.experience || [],
-        education: profile.education || [],
-        tags,
-      },
-      history: history || [],
-    }
-
-    const response = await aiService.chatWithAssistant(message, context)
-
-    res.json({
-      success: true,
-      data: {
-        response,
-      },
-    })
   } catch (error) {
+    console.error('Error in chatWithAssistant controller:', error)
     next(error)
   }
 }

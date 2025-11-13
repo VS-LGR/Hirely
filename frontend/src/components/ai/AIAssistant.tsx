@@ -42,6 +42,17 @@ export function AIAssistant({ className }: AIAssistantProps) {
       ])
       setInput('')
     },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.error?.message || error.message || 'Erro ao processar mensagem'
+      setMessages((prev) => [
+        ...prev,
+        { 
+          role: 'assistant', 
+          content: `❌ ${errorMessage}\n\nPor favor, tente novamente ou verifique sua configuração da API OpenAI.` 
+        },
+      ])
+      setInput('')
+    },
   })
 
   const handleSend = () => {
