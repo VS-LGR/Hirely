@@ -1,8 +1,15 @@
 import axios from 'axios'
 
-// Garantir que a baseURL sempre termine com /api
+// Garantir que a baseURL sempre termine com /api e tenha protocolo
 const getBaseURL = () => {
-  const envURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  let envURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  
+  // Garantir que a URL tenha protocolo (https:// ou http://)
+  if (!envURL.startsWith('http://') && !envURL.startsWith('https://')) {
+    // Se não tiver protocolo, adicionar https:// (produção) ou http:// (desenvolvimento)
+    envURL = envURL.includes('localhost') ? `http://${envURL}` : `https://${envURL}`
+  }
+  
   const baseURL = envURL.endsWith('/api') ? envURL : `${envURL}/api`
   if (typeof window !== 'undefined') {
     console.log('API Base URL:', baseURL)
