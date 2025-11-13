@@ -125,26 +125,55 @@ export default function ProfilePage() {
       return response.data.data.tags as Array<{ name: string; category: string }>
     },
     onSuccess: async (suggestedTags) => {
+      console.log('Tags sugeridas recebidas:', suggestedTags)
       // Buscar tags no banco e adicionar ao formData
       const newTags: Tag[] = []
       for (const suggestedTag of suggestedTags) {
         try {
+          // Buscar tags que correspondam ao nome sugerido
           const response = await api.get(`/tags/search?q=${encodeURIComponent(suggestedTag.name)}`)
           const tags = response.data.data.tags as Tag[]
-          const matchingTag = tags.find(
+          
+          // Tentar encontrar correspondência exata primeiro
+          let matchingTag = tags.find(
             (t) => t.name.toLowerCase() === suggestedTag.name.toLowerCase()
           )
+          
+          // Se não encontrar exato, tentar correspondência parcial
+          if (!matchingTag) {
+            matchingTag = tags.find(
+              (t) => t.name.toLowerCase().includes(suggestedTag.name.toLowerCase()) ||
+                    suggestedTag.name.toLowerCase().includes(t.name.toLowerCase())
+            )
+          }
+          
+          // Se ainda não encontrar, usar a primeira tag da categoria
+          if (!matchingTag && tags.length > 0) {
+            matchingTag = tags.find(t => t.category === suggestedTag.category) || tags[0]
+          }
+          
           if (matchingTag && !formData.tags.some((t) => t.id === matchingTag.id)) {
             newTags.push(matchingTag)
+            console.log('Tag adicionada:', matchingTag.name)
+          } else if (matchingTag) {
+            console.log('Tag já existe:', matchingTag.name)
+          } else {
+            console.log('Tag não encontrada no banco:', suggestedTag.name)
           }
         } catch (error) {
           console.error('Error finding tag:', error)
         }
       }
-      setFormData((prev) => ({
-        ...prev,
-        tags: [...prev.tags, ...newTags],
-      }))
+      
+      if (newTags.length > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          tags: [...prev.tags, ...newTags],
+        }))
+        console.log(`${newTags.length} tags adicionadas ao perfil`)
+      } else {
+        console.log('Nenhuma tag nova foi adicionada')
+      }
     },
   })
 

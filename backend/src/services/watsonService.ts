@@ -262,19 +262,50 @@ class WatsonServiceImpl implements WatsonService {
         }
       })
 
-      // Criar biografia resumida
-      const bio = keywords
-        .slice(0, 5)
+      // Criar biografia mais completa e bem formatada
+      const topKeywords = keywords
+        .filter((k: any) => k.relevance && k.relevance > 0.5)
+        .slice(0, 8)
         .map((k: any) => k.text)
-        .join(', ')
+      
+      const topConcepts = concepts
+        .filter((c: any) => c.relevance && c.relevance > 0.6)
+        .slice(0, 5)
+        .map((c: any) => c.text)
+      
+      // Construir biografia profissional
+      let bio = ''
+      if (topKeywords.length > 0) {
+        bio = `Profissional com experiência sólida em ${topKeywords.slice(0, 3).join(', ')}`
+        if (topKeywords.length > 3) {
+          bio += ` e especialização em ${topKeywords.slice(3, 6).join(', ')}`
+        }
+        if (topConcepts.length > 0) {
+          bio += `. Domínio em ${topConcepts.slice(0, 2).join(' e ')}`
+        }
+        bio += '. Perfil focado em resultados e desenvolvimento contínuo de habilidades técnicas e profissionais.'
+      } else {
+        bio = 'Profissional dedicado com experiência em diversas áreas. Comprometido com excelência e crescimento contínuo.'
+      }
 
       // Sugerir tags baseadas em keywords e conceitos
       const suggestedTags: Array<{ name: string; category: string }> = []
-      keywords.slice(0, 10).forEach((keyword: any) => {
-        if (keyword.relevance && keyword.relevance > 0.6) {
+      keywords.slice(0, 15).forEach((keyword: any) => {
+        if (keyword.relevance && keyword.relevance > 0.5) {
+          // Tentar determinar categoria baseada no texto
+          const keywordText = keyword.text.toLowerCase()
+          let category = 'Tecnologia'
+          if (keywordText.includes('design') || keywordText.includes('ui') || keywordText.includes('ux')) {
+            category = 'Design'
+          } else if (keywordText.includes('gestão') || keywordText.includes('liderança') || keywordText.includes('gerenciamento')) {
+            category = 'Gestão'
+          } else if (keywordText.includes('comunicação') || keywordText.includes('marketing') || keywordText.includes('vendas')) {
+            category = 'Comunicação'
+          }
+          
           suggestedTags.push({
             name: keyword.text,
-            category: 'Tecnologia', // Categoria padrão, pode ser melhorada
+            category,
           })
         }
       })
