@@ -189,7 +189,7 @@ export function AIAssistant({ className }: AIAssistantProps) {
             className="flex-1"
           />
           <Button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!input.trim() || chatMutation.isPending}
             size="icon"
           >

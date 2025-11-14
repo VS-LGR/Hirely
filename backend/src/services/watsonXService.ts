@@ -74,7 +74,12 @@ class WatsonXServiceImpl implements AIService {
         }
       )
 
-      this.iamToken = response.data.access_token
+      const accessToken = response.data.access_token
+      if (!accessToken) {
+        throw new Error('Token IAM não retornado na resposta')
+      }
+
+      this.iamToken = accessToken
       // Token expira em 1 hora, mas vamos renovar 5 minutos antes
       this.tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000
 
