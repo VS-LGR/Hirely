@@ -83,7 +83,7 @@ class WatsonXServiceImpl implements AIService {
       // Token expira em 1 hora, mas vamos renovar 5 minutos antes
       this.tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000
 
-      return this.iamToken
+      return accessToken
     } catch (error: any) {
       console.error('Erro ao obter token IAM:', error.response?.data || error.message)
       throw new Error('Falha ao autenticar com IBM Cloud IAM')
@@ -482,10 +482,36 @@ Seja preciso e extraia apenas informações claramente presentes no currículo.`
         temperature: 0.3, // Menor temperatura para análise mais precisa
       }, true) // forceDirectGeneration = true
 
-      // Tentar extrair JSON da resposta
+      // Tentar extrair JSON da resposta - melhorar parsing para lidar com JSON mal formatado
+      let parsed: any = null
+      
+      // Tentar encontrar JSON válido na resposta
       const jsonMatch = response.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0])
+        try {
+          // Tentar parse direto
+          parsed = JSON.parse(jsonMatch[0])
+        } catch (parseError) {
+          // Se falhar, tentar limpar o JSON removendo caracteres inválidos
+          try {
+            let cleanedJson = jsonMatch[0]
+            // Remover texto após o último }
+            const lastBrace = cleanedJson.lastIndexOf('}')
+            if (lastBrace > 0) {
+              cleanedJson = cleanedJson.substring(0, lastBrace + 1)
+            }
+            parsed = JSON.parse(cleanedJson)
+          } catch (secondError) {
+            console.error('Erro ao parsear JSON da análise de currículo:', {
+              originalError: parseError,
+              secondError: secondError,
+              jsonMatch: jsonMatch[0].substring(0, 500), // Log apenas primeiros 500 chars
+            })
+          }
+        }
+      }
+      
+      if (parsed) {
         return {
           skills: parsed.skills || [],
           experience: parsed.experience || [],
@@ -734,65 +760,91 @@ Seja preciso e sugira apenas tags que existem na lista acima.`
         )
 
         // Log completo da resposta para debug
-        console.log('WatsonX Chat Response:', JSON.stringify(response.data, null, 2))
+        console.log('WatsonX Chat Response (raw):', JSON.stringify(response.data, null, 2))
+        console.log('WatsonX Chat Response type:', typeof response.data, Array.isArray(response.data))
+        console.log('WatsonX Chat Messages sent:', JSON.stringify(allMessages, null, 2))
 
         // Formato 1: Array direto (formato mais comum do WatsonX chat)
         // [{ index: 0, message: { role: "assistant", content: "..." }, finish_reason: "stop" }]
         if (Array.isArray(response.data) && response.data.length > 0) {
+          console.log('Detectado formato: Array direto (chat)')
           const firstItem = response.data[0]
-          if (firstItem.message && firstItem.message.content) {
-            return firstItem.message.content.trim()
-          }
-          if (firstItem.message && firstItem.message.text) {
-            return firstItem.message.text.trim()
+          console.log('First item:', JSON.stringify(firstItem, null, 2))
+          
+          if (firstItem.message) {
+            const content = firstItem.message.content || firstItem.message.text
+            if (content) {
+              console.log('✅ Extraído conteúdo do array direto (chat):', content.substring(0, 100))
+              return content.trim()
+            }
           }
         }
 
         // Formato 2: response.data.results (formato alternativo)
         if (response.data.results && Array.isArray(response.data.results) && response.data.results.length > 0) {
+          console.log('Detectado formato: response.data.results')
           const result = response.data.results[0]
           
           // result.message.content
           if (result.message) {
             const content = result.message.content || result.message.text
-            if (content) return content.trim()
+            if (content) {
+              console.log('✅ Extraído conteúdo de results[0].message:', content.substring(0, 100))
+              return content.trim()
+            }
           }
           
           // result.content
           if (result.content) {
+            console.log('✅ Extraído conteúdo de results[0].content')
             return result.content.trim()
           }
           
           // result.text
           if (result.text) {
+            console.log('✅ Extraído conteúdo de results[0].text')
             return result.text.trim()
           }
           
           // result.generated_text
           if (result.generated_text) {
+            console.log('✅ Extraído conteúdo de results[0].generated_text')
             return result.generated_text.trim()
           }
         }
 
         // Formato 3: Nível raiz direto
         if (response.data.message) {
+          console.log('Detectado formato: response.data.message')
           const content = response.data.message.content || response.data.message.text
-          if (content) return content.trim()
+          if (content) {
+            console.log('✅ Extraído conteúdo de data.message')
+            return content.trim()
+          }
         }
 
         if (response.data.content) {
+          console.log('✅ Extraído conteúdo de data.content')
           return response.data.content.trim()
         }
 
         if (response.data.text) {
+          console.log('✅ Extraído conteúdo de data.text')
           return response.data.text.trim()
         }
 
         if (response.data.generated_text) {
+          console.log('✅ Extraído conteúdo de data.generated_text')
           return response.data.generated_text.trim()
         }
 
-        console.error('Formato de resposta desconhecido no chat:', response.data)
+        console.error('❌ Formato de resposta desconhecido no chat. Estrutura completa:', {
+          isArray: Array.isArray(response.data),
+          hasResults: !!response.data.results,
+          keys: Object.keys(response.data || {}),
+          dataType: typeof response.data,
+          dataPreview: JSON.stringify(response.data).substring(0, 500),
+        })
         return 'Desculpe, não consegui processar sua mensagem.'
       }
 

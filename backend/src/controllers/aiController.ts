@@ -356,8 +356,17 @@ export const chatWithAssistant = async (
         history: history || [],
       }
 
+      console.log('Chat request:', {
+        message: message.substring(0, 100),
+        historyLength: context.history.length,
+        history: context.history,
+        profileName: context.profile.name,
+      })
+
       const service = getAIService()
       const response = await service.chatWithAssistant(message, context)
+      
+      console.log('Chat response received:', response.substring(0, 100))
 
       res.json({
         success: true,
