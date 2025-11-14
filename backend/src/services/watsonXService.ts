@@ -93,6 +93,7 @@ class WatsonXServiceImpl implements AIService {
   /**
    * Chamar API de geração de texto do WatsonX
    * Suporta tanto deployment (com prompt model) quanto text/generation direto
+   * @param forceDirectGeneration Se true, força uso de text/generation mesmo com deployment configurado
    */
   private async callTextGeneration(
     prompt: string,
@@ -100,7 +101,8 @@ class WatsonXServiceImpl implements AIService {
       max_new_tokens?: number
       temperature?: number
       decoding_method?: string
-    }
+    },
+    forceDirectGeneration: boolean = false
   ): Promise<string> {
     if (!this.apiKey || !this.projectId || !this.apiUrl) {
       throw new Error('WatsonX não está configurado. Configure WATSONX_API_KEY, WATSONX_PROJECT_ID e WATSONX_API_URL')
@@ -108,12 +110,16 @@ class WatsonXServiceImpl implements AIService {
 
     const token = await this.getIamToken()
 
-    // Se usar deployment, o formato é diferente (chat com messages)
-    if (this.useDeployment && this.deploymentId) {
+    // Se usar deployment E não forçar geração direta, usar chat deployment
+    if (this.useDeployment && this.deploymentId && !forceDirectGeneration) {
       return await this.callDeploymentChat(prompt, parameters)
     }
 
     // Formato padrão: text/generation
+    if (!this.modelId) {
+      throw new Error('WATSONX_MODEL_ID não configurado. Configure WATSONX_MODEL_ID para usar text/generation direto.')
+    }
+
     const requestBody = {
       model_id: this.modelId,
       project_id: this.projectId,
@@ -231,30 +237,58 @@ class WatsonXServiceImpl implements AIService {
         }
       )
 
-      // Resposta do chat deployment
+      // Log completo da resposta para debug
+      console.log('WatsonX Deployment Response:', JSON.stringify(response.data, null, 2))
+
+      // Resposta do chat deployment - pode ter diferentes formatos
       if (response.data.results && response.data.results.length > 0) {
         const result = response.data.results[0]
-        // Pode ter diferentes formatos dependendo do modelo
+        
+        // Formato 1: result.message.content
         if (result.message) {
-          return result.message.content || result.message.text || ''
+          const content = result.message.content || result.message.text
+          if (content) return content
         }
+        
+        // Formato 2: result.content diretamente
         if (result.content) {
           return result.content
         }
+        
+        // Formato 3: result.text
         if (result.text) {
           return result.text
         }
+        
+        // Formato 4: result.generated_text
+        if (result.generated_text) {
+          return result.generated_text
+        }
       }
 
-      // Fallback
+      // Fallback: verificar se há mensagem no nível raiz
       if (response.data.message) {
-        return response.data.message.content || response.data.message.text || ''
+        const content = response.data.message.content || response.data.message.text
+        if (content) return content
       }
 
+      // Fallback: content no nível raiz
       if (response.data.content) {
         return response.data.content
       }
 
+      // Fallback: text no nível raiz
+      if (response.data.text) {
+        return response.data.text
+      }
+
+      // Fallback: generated_text no nível raiz
+      if (response.data.generated_text) {
+        return response.data.generated_text
+      }
+
+      // Se chegou aqui, a resposta está vazia ou em formato desconhecido
+      console.error('Formato de resposta desconhecido:', response.data)
       throw new Error('Resposta vazia do WatsonX Deployment')
     } catch (error: any) {
       console.error('Erro ao chamar WatsonX Deployment API:', {
@@ -433,10 +467,11 @@ Extraia e retorne em formato JSON:
 Seja preciso e extraia apenas informações claramente presentes no currículo.`
 
     try {
+      // Forçar uso de text/generation direto para análise de currículo (não usar deployment)
       const response = await this.callTextGeneration(prompt, {
         max_new_tokens: 1500,
         temperature: 0.3, // Menor temperatura para análise mais precisa
-      })
+      }, true) // forceDirectGeneration = true
 
       // Tentar extrair JSON da resposta
       const jsonMatch = response.match(/\{[\s\S]*\}/)
@@ -689,17 +724,54 @@ Seja preciso e sugira apenas tags que existem na lista acima.`
           }
         )
 
-        // Extrair resposta
+        // Log completo da resposta para debug
+        console.log('WatsonX Chat Response:', JSON.stringify(response.data, null, 2))
+
+        // Extrair resposta - tentar diferentes formatos
         if (response.data.results && response.data.results.length > 0) {
           const result = response.data.results[0]
+          
+          // Formato 1: result.message.content
           if (result.message) {
-            return (result.message.content || result.message.text || '').trim()
+            const content = result.message.content || result.message.text
+            if (content) return content.trim()
           }
+          
+          // Formato 2: result.content
           if (result.content) {
             return result.content.trim()
           }
+          
+          // Formato 3: result.text
+          if (result.text) {
+            return result.text.trim()
+          }
+          
+          // Formato 4: result.generated_text
+          if (result.generated_text) {
+            return result.generated_text.trim()
+          }
         }
 
+        // Fallback: verificar nível raiz
+        if (response.data.message) {
+          const content = response.data.message.content || response.data.message.text
+          if (content) return content.trim()
+        }
+
+        if (response.data.content) {
+          return response.data.content.trim()
+        }
+
+        if (response.data.text) {
+          return response.data.text.trim()
+        }
+
+        if (response.data.generated_text) {
+          return response.data.generated_text.trim()
+        }
+
+        console.error('Formato de resposta desconhecido no chat:', response.data)
         return 'Desculpe, não consegui processar sua mensagem.'
       }
 
