@@ -44,7 +44,8 @@ export const watsonSearch = async (
 
     // Se query for objeto, tentar extrair string
     if (query && typeof query === 'object') {
-      query = query.query || query.text || query.search || JSON.stringify(query)
+      const queryObj = query as any
+      query = queryObj.query || queryObj.text || queryObj.search || JSON.stringify(query)
     }
 
     // Se ainda não tiver query, retornar dicas gerais
@@ -70,6 +71,18 @@ export const watsonSearch = async (
 
     // Extrair limit do body ou usar padrão
     const limit = (req.body?.limit || req.query?.limit || 10) as number
+
+    // Processar filter e metadata se fornecidos pelo Watson
+    const filter = req.body?.filter || req.query?.filter
+    const metadata = req.body?.metadata || req.query?.metadata
+    
+    if (filter) {
+      console.log('Filter recebido:', filter)
+    }
+    
+    if (metadata) {
+      console.log('Metadata recebido:', metadata)
+    }
 
     // Buscar tags relacionadas
     let tagsResult
