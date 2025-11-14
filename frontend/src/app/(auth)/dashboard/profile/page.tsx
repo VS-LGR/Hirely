@@ -709,52 +709,51 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  {/* Outras Informações da Análise */}
-                  {(formData.strengths.length > 0 || formData.suggestions.length > 0) && (
-                    <div className="space-y-4">
-                      <Label className="text-base font-semibold">Outras Informações</Label>
-                      
-                      {formData.strengths.length > 0 && (
-                        <Card className="bg-bege-medium">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-semibold text-brown-dark">
-                              Pontos Fortes Identificados
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <ul className="space-y-2">
-                              {formData.strengths.map((strength, index) => (
-                                <li key={index} className="flex items-start gap-2 text-sm text-brown-soft">
-                                  <span className="text-primary mt-1">•</span>
-                                  <span>{strength}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </CardContent>
-                        </Card>
-                      )}
+                  {/* Pontos Fortes */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-semibold">Pontos Fortes Identificados</Label>
+                    {formData.strengths.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">
+                        Nenhum ponto forte identificado ainda. Faça upload do seu currículo para análise automática.
+                      </p>
+                    ) : (
+                      <Card className="bg-bege-medium">
+                        <CardContent className="pt-4">
+                          <ul className="space-y-2">
+                            {formData.strengths.map((strength, index) => (
+                              <li key={index} className="flex items-start gap-2 text-sm text-brown-soft">
+                                <span className="text-primary mt-1">•</span>
+                                <span>{strength}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
 
-                      {formData.suggestions.length > 0 && (
-                        <Card className="bg-bege-medium">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-semibold text-brown-dark">
-                              Sugestões de Desenvolvimento
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <ul className="space-y-2">
-                              {formData.suggestions.map((suggestion, index) => (
-                                <li key={index} className="flex items-start gap-2 text-sm text-brown-soft">
-                                  <span className="text-primary mt-1">•</span>
-                                  <span>{suggestion}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
-                  )}
+                  {/* Sugestões de Desenvolvimento */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-semibold">Sugestões de Desenvolvimento</Label>
+                    {formData.suggestions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">
+                        Nenhuma sugestão disponível ainda. Faça upload do seu currículo para receber sugestões personalizadas.
+                      </p>
+                    ) : (
+                      <Card className="bg-bege-medium">
+                        <CardContent className="pt-4">
+                          <ul className="space-y-2">
+                            {formData.suggestions.map((suggestion, index) => (
+                              <li key={index} className="flex items-start gap-2 text-sm text-brown-soft">
+                                <span className="text-primary mt-1">•</span>
+                                <span>{suggestion}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
 
                   <div className="flex gap-4">
                     <Button type="submit" disabled={updateMutation.isPending}>
