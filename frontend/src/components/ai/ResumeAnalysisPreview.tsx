@@ -54,12 +54,58 @@ export function ResumeAnalysisPreview({
 
   if (!analysis) return null
 
-  // Formatar bio com quebras de linha
+  // Formatar bio com quebras de linha e melhor formatação
   const formatBio = (bio: string) => {
     if (!bio) return ''
-    // Substituir \n\n por quebras de parágrafo
-    return bio.split('\n\n').map((paragraph, index) => (
-      <p key={index} className={index > 0 ? 'mt-4' : ''}>
+    
+    // Limpar e normalizar a bio
+    let cleanedBio = bio
+      .trim()
+      .replace(/\n{3,}/g, '\n\n') // Remover múltiplas quebras de linha
+      .replace(/[ \t]+/g, ' ') // Normalizar espaços
+      .replace(/\s+\./g, '.') // Remover espaços antes de pontos
+    
+    // Dividir por parágrafos (quebras duplas) ou por frases longas
+    const paragraphs = cleanedBio.split(/\n\n+/).filter(p => p.trim())
+    
+    // Se não houver parágrafos explícitos, tentar criar baseado em pontos finais
+    if (paragraphs.length === 1 && cleanedBio.length > 200) {
+      // Dividir em sentenças e agrupar em parágrafos
+      const sentences = cleanedBio.split(/[.!?]+/).filter(s => s.trim().length > 20)
+      const grouped: string[] = []
+      let currentGroup = ''
+      
+      sentences.forEach((sentence, index) => {
+        const trimmed = sentence.trim()
+        if (trimmed) {
+          currentGroup += (currentGroup ? '. ' : '') + trimmed
+          // Criar parágrafo a cada 2-3 frases ou se atingir ~150 caracteres
+          if ((index + 1) % 3 === 0 || currentGroup.length > 150) {
+            grouped.push(currentGroup + '.')
+            currentGroup = ''
+          }
+        }
+      })
+      if (currentGroup) {
+        grouped.push(currentGroup + '.')
+      }
+      
+      return grouped.length > 0 
+        ? grouped.map((p, i) => (
+            <p key={i} className={i > 0 ? 'mt-4' : ''} style={{ lineHeight: '1.6' }}>
+              {p.trim()}
+            </p>
+          ))
+        : paragraphs.map((paragraph, index) => (
+            <p key={index} className={index > 0 ? 'mt-4' : ''} style={{ lineHeight: '1.6' }}>
+              {paragraph.trim()}
+            </p>
+          ))
+    }
+    
+    // Retornar parágrafos formatados
+    return paragraphs.map((paragraph, index) => (
+      <p key={index} className={index > 0 ? 'mt-4' : ''} style={{ lineHeight: '1.6' }}>
         {paragraph.trim()}
       </p>
     ))

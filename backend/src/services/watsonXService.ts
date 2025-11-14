@@ -465,7 +465,7 @@ Extraia e retorne em formato JSON:
       "endDate": "YYYY-MM ou null"
     }
   ],
-  "bio": "Biografia profissional gerada baseada no currículo (2-4 parágrafos)",
+  "bio": "Biografia profissional gerada baseada no currículo. Use 2-4 parágrafos bem estruturados, separados por quebras de linha duplas (\\n\\n). Cada parágrafo deve ter 3-5 frases. Seja específico sobre habilidades, experiência e objetivos profissionais.",
   "suggestedTags": [
     {"name": "Tag1", "category": "Categoria1"}
   ],
@@ -486,26 +486,36 @@ Seja preciso e extraia apenas informações claramente presentes no currículo.`
       let parsed: any = null
       
       // Tentar encontrar JSON válido na resposta
-      const jsonMatch = response.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        try {
-          // Tentar parse direto
-          parsed = JSON.parse(jsonMatch[0])
-        } catch (parseError) {
-          // Se falhar, tentar limpar o JSON removendo caracteres inválidos
-          try {
-            let cleanedJson = jsonMatch[0]
-            // Remover texto após o último }
-            const lastBrace = cleanedJson.lastIndexOf('}')
-            if (lastBrace > 0) {
-              cleanedJson = cleanedJson.substring(0, lastBrace + 1)
+      // Procurar pelo primeiro { e encontrar o último } válido (balanceado)
+      const firstBrace = response.indexOf('{')
+      if (firstBrace >= 0) {
+        let braceCount = 0
+        let validEnd = -1
+        
+        // Encontrar o último } que fecha o objeto JSON principal
+        for (let i = firstBrace; i < response.length; i++) {
+          if (response[i] === '{') braceCount++
+          if (response[i] === '}') {
+            braceCount--
+            if (braceCount === 0) {
+              validEnd = i
+              break
             }
-            parsed = JSON.parse(cleanedJson)
-          } catch (secondError) {
+          }
+        }
+        
+        if (validEnd > firstBrace) {
+          const jsonCandidate = response.substring(firstBrace, validEnd + 1)
+          
+          try {
+            // Tentar parse direto
+            parsed = JSON.parse(jsonCandidate)
+          } catch (parseError: any) {
             console.error('Erro ao parsear JSON da análise de currículo:', {
-              originalError: parseError,
-              secondError: secondError,
-              jsonMatch: jsonMatch[0].substring(0, 500), // Log apenas primeiros 500 chars
+              error: parseError.message,
+              position: parseError.message.match(/position (\d+)/)?.[1],
+              jsonPreview: jsonCandidate.substring(0, 500),
+              jsonLength: jsonCandidate.length,
             })
           }
         }
@@ -721,20 +731,29 @@ Seja preciso e sugira apenas tags que existem na lista acima.`
         const allMessages: Array<{ role: string; content: string }> = []
         
         // Adicionar histórico se disponível (já vem no formato correto)
+        // Remover duplicatas baseado no conteúdo
+        const seenMessages = new Set<string>()
         if (context?.history && context.history.length > 0) {
           context.history.forEach((msg: any) => {
-            allMessages.push({
-              role: msg.role === 'user' ? 'user' : 'assistant',
-              content: msg.content,
-            })
+            const messageKey = `${msg.role}:${msg.content}`
+            if (!seenMessages.has(messageKey)) {
+              seenMessages.add(messageKey)
+              allMessages.push({
+                role: msg.role === 'user' ? 'user' : 'assistant',
+                content: msg.content,
+              })
+            }
           })
         }
         
-        // Adicionar mensagem atual
-        allMessages.push({
-          role: 'user',
-          content: enhancedMessage,
-        })
+        // Adicionar mensagem atual (verificar se não é duplicada)
+        const currentMessageKey = `user:${enhancedMessage}`
+        if (!seenMessages.has(currentMessageKey)) {
+          allMessages.push({
+            role: 'user',
+            content: enhancedMessage,
+          })
+        }
         
         const token = await this.getIamToken()
         const endpointUrl = process.env.WATSONX_USE_PRIVATE === 'true'
@@ -764,7 +783,23 @@ Seja preciso e sugira apenas tags que existem na lista acima.`
         console.log('WatsonX Chat Response type:', typeof response.data, Array.isArray(response.data))
         console.log('WatsonX Chat Messages sent:', JSON.stringify(allMessages, null, 2))
 
-        // Formato 1: Array direto (formato mais comum do WatsonX chat)
+        // Formato 1: response.data.choices (formato do WatsonX deployment chat)
+        // { choices: [{ index: 0, message: { role: "assistant", content: "..." }, finish_reason: "stop" }] }
+        if (response.data.choices && Array.isArray(response.data.choices) && response.data.choices.length > 0) {
+          console.log('Detectado formato: response.data.choices')
+          const choice = response.data.choices[0]
+          console.log('First choice:', JSON.stringify(choice, null, 2))
+          
+          if (choice.message) {
+            const content = choice.message.content || choice.message.text
+            if (content) {
+              console.log('✅ Extraído conteúdo de choices[0].message.content:', content.substring(0, 100))
+              return content.trim()
+            }
+          }
+        }
+
+        // Formato 2: Array direto (formato alternativo)
         // [{ index: 0, message: { role: "assistant", content: "..." }, finish_reason: "stop" }]
         if (Array.isArray(response.data) && response.data.length > 0) {
           console.log('Detectado formato: Array direto (chat)')
@@ -780,7 +815,7 @@ Seja preciso e sugira apenas tags que existem na lista acima.`
           }
         }
 
-        // Formato 2: response.data.results (formato alternativo)
+        // Formato 3: response.data.results (formato alternativo)
         if (response.data.results && Array.isArray(response.data.results) && response.data.results.length > 0) {
           console.log('Detectado formato: response.data.results')
           const result = response.data.results[0]
@@ -813,7 +848,7 @@ Seja preciso e sugira apenas tags que existem na lista acima.`
           }
         }
 
-        // Formato 3: Nível raiz direto
+        // Formato 4: Nível raiz direto
         if (response.data.message) {
           console.log('Detectado formato: response.data.message')
           const content = response.data.message.content || response.data.message.text
@@ -840,6 +875,7 @@ Seja preciso e sugira apenas tags que existem na lista acima.`
 
         console.error('❌ Formato de resposta desconhecido no chat. Estrutura completa:', {
           isArray: Array.isArray(response.data),
+          hasChoices: !!response.data.choices,
           hasResults: !!response.data.results,
           keys: Object.keys(response.data || {}),
           dataType: typeof response.data,

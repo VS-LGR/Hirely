@@ -136,7 +136,13 @@ export default function JobApplicationsPage() {
                   {application.candidate.bio && (
                     <div>
                       <h3 className="text-sm font-semibold text-brown-dark mb-1">Sobre</h3>
-                      <p className="text-sm text-brown-soft">{application.candidate.bio}</p>
+                      <div className="text-sm text-brown-soft whitespace-pre-line" style={{ lineHeight: '1.6' }}>
+                        {application.candidate.bio.split('\n\n').map((paragraph, index) => (
+                          <p key={index} className={index > 0 ? 'mt-3' : ''}>
+                            {paragraph.trim()}
+                          </p>
+                        ))}
+                      </div>
                     </div>
                   )}
 
