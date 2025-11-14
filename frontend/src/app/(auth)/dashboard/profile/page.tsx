@@ -152,22 +152,36 @@ export default function ProfilePage() {
           // Se não encontrar exato, tentar correspondência parcial (palavras-chave)
           if (!matchingTag) {
             const suggestedWords = normalizedSuggested.split(/\s+/).filter(w => w.length > 2)
+            // Remover hífens e caracteres especiais para melhor matching
+            const normalizedSuggestedClean = normalizedSuggested.replace(/[-_]/g, ' ')
+            
             matchingTag = tags.find((t) => {
               const tagName = normalize(t.name)
+              const tagNameClean = tagName.replace(/[-_]/g, ' ')
+              
               // Verificar se alguma palavra-chave está presente
-              return suggestedWords.some(word => tagName.includes(word)) ||
-                     tagName.split(/\s+/).some(word => normalizedSuggested.includes(word))
+              return suggestedWords.some(word => tagName.includes(word) || tagNameClean.includes(word)) ||
+                     tagName.split(/\s+/).some(word => normalizedSuggested.includes(word) || normalizedSuggestedClean.includes(word)) ||
+                     // Verificar correspondência sem hífens (ex: "Front-End" vs "Frontend")
+                     tagNameClean === normalizedSuggestedClean ||
+                     tagNameClean.includes(normalizedSuggestedClean) ||
+                     normalizedSuggestedClean.includes(tagNameClean)
             })
           }
           
-          // Se ainda não encontrar, tentar correspondência por categoria
+          // Se ainda não encontrar, tentar correspondência por categoria e palavras-chave
           if (!matchingTag && tags.length > 0) {
-            matchingTag = tags.find(t => t.category === suggestedTag.category)
+            const suggestedWords = normalizedSuggested.split(/\s+/).filter(w => w.length > 2)
+            matchingTag = tags.find((t) => {
+              const tagName = normalize(t.name)
+              return t.category === suggestedTag.category && 
+                     suggestedWords.some(word => tagName.includes(word))
+            })
           }
           
-          // Última tentativa: usar a primeira tag retornada pela busca
+          // Se ainda não encontrar, usar primeira tag da categoria
           if (!matchingTag && tags.length > 0) {
-            matchingTag = tags[0]
+            matchingTag = tags.find(t => t.category === suggestedTag.category) || tags[0]
           }
           
           if (matchingTag && !formData.tags.some((t) => t.id === matchingTag.id)) {

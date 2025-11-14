@@ -40,7 +40,8 @@ app.get('/', (req, res) => {
       tags: '/api/tags',
       stats: '/api/stats',
       applications: '/api/applications',
-      watsonSearch: '/api/watson-search'
+      watsonSearch: '/api/watson-search',
+      watsonSearchEndpoint: '/api/watson-search/search'
     }
   })
 })

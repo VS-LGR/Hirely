@@ -59,14 +59,18 @@ class WatsonServiceImpl implements WatsonService {
           serviceUrl: process.env.WATSON_ASSISTANT_URL,
         })
         this.assistantId = process.env.WATSON_ASSISTANT_ID
-        // environmentId deve ser o Draft Environment ID ou deixar null (o Watson usa o padrão)
-        // NÃO usar assistantId como fallback - isso causa erro "Resource not found"
-        this.environmentId = process.env.WATSON_ENVIRONMENT_ID || null
+        // environmentId é obrigatório na API do Watson Assistant
+        // Se não estiver configurado, usar assistantId como fallback
+        // Em muitos casos, o environmentId pode ser o mesmo que o assistantId
+        this.environmentId = process.env.WATSON_ENVIRONMENT_ID || process.env.WATSON_ASSISTANT_ID || null
         console.log('✅ Watson Assistant inicializado', {
           assistantId: this.assistantId,
-          environmentId: this.environmentId || 'não configurado (usando padrão)',
+          environmentId: this.environmentId || 'não configurado',
           hasEnvironmentId: !!process.env.WATSON_ENVIRONMENT_ID,
-          note: this.environmentId ? 'Usando Environment ID configurado' : 'Watson usará o Environment padrão do Assistant',
+          usingFallback: !process.env.WATSON_ENVIRONMENT_ID && !!process.env.WATSON_ASSISTANT_ID,
+          note: this.environmentId 
+            ? (process.env.WATSON_ENVIRONMENT_ID ? 'Usando Environment ID configurado' : 'Usando Assistant ID como fallback')
+            : '⚠️ ERRO: environmentId não configurado! Configure WATSON_ENVIRONMENT_ID no Vercel.',
         })
       } catch (error) {
         console.error('❌ Erro ao inicializar Watson Assistant:', error)
@@ -115,14 +119,14 @@ class WatsonServiceImpl implements WatsonService {
       // Criar ou recuperar sessão
       let sessionId = context?.profile?.sessionId
       if (!sessionId) {
-        // Se environmentId não estiver configurado, não passar (Watson usa o padrão)
-        const sessionParams: any = {
+        // environmentId é obrigatório na API do Watson Assistant
+        if (!this.environmentId) {
+          throw new Error('WATSON_ENVIRONMENT_ID não configurado. Configure no Vercel ou use o mesmo valor do WATSON_ASSISTANT_ID.')
+        }
+        const session = await this.assistant.createSession({
           assistantId: this.assistantId!,
-        }
-        if (this.environmentId) {
-          sessionParams.environmentId = this.environmentId
-        }
-        const session = await this.assistant.createSession(sessionParams)
+          environmentId: this.environmentId!,
+        })
         sessionId = session.result.session_id
       }
 
@@ -140,8 +144,13 @@ class WatsonServiceImpl implements WatsonService {
       }
 
       // Enviar mensagem
-      const messageParams: any = {
+      // environmentId é obrigatório na API do Watson Assistant
+      if (!this.environmentId) {
+        throw new Error('WATSON_ENVIRONMENT_ID não configurado. Configure no Vercel ou use o mesmo valor do WATSON_ASSISTANT_ID.')
+      }
+      const response = await this.assistant.message({
         assistantId: this.assistantId!,
+        environmentId: this.environmentId!,
         sessionId: sessionId,
         userId: String(userId),
         input: {
@@ -149,12 +158,7 @@ class WatsonServiceImpl implements WatsonService {
           text: message,
         },
         context: userContext,
-      }
-      // Se environmentId estiver configurado, adicionar
-      if (this.environmentId) {
-        messageParams.environmentId = this.environmentId
-      }
-      const response = await this.assistant.message(messageParams)
+      })
 
       const output = response.result.output
 
@@ -380,6 +384,7 @@ class WatsonServiceImpl implements WatsonService {
   /**
    * Sugerir tags baseado no perfil
    * Retorna 3-4 tags diferentes, evitando duplicatas
+   * IMPORTANTE: Filtra keywords inválidas que não são tags válidas
    */
   async suggestTags(profile: {
     bio?: string
@@ -401,11 +406,11 @@ Experiência: ${JSON.stringify(profile.experience || [])}
         text: profileText,
         features: {
           keywords: {
-            limit: 20,
+            limit: 30,
             sentiment: false,
           },
           concepts: {
-            limit: 15,
+            limit: 20,
           },
           entities: {
             limit: 20,
@@ -417,6 +422,27 @@ Experiência: ${JSON.stringify(profile.experience || [])}
       const seenNames = new Set<string>() // Para evitar duplicatas
       const seenCategories = new Set<string>() // Para garantir diversidade de categorias
 
+      // Palavras/frases que devem ser ignoradas (não são tags válidas)
+      const invalidKeywords = [
+        'perfil profissional',
+        'perfil',
+        'profissional',
+        'experiência',
+        'experiência sólida',
+        'sólida',
+        'desenvolvimento',
+        'desenvolvimento contínuo',
+        'habilidades técnicas',
+        'habilidades profissionais',
+        'resultados',
+        'focado',
+        'domínio',
+        'especialização',
+        'contínuo',
+        'técnicas',
+        'profissionais',
+      ]
+
       // Função para normalizar nome de tag
       const normalizeTagName = (name: string) => 
         name.toLowerCase()
@@ -424,11 +450,19 @@ Experiência: ${JSON.stringify(profile.experience || [])}
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
 
+      // Função para verificar se é keyword inválida
+      const isInvalidKeyword = (text: string): boolean => {
+        const normalized = normalizeTagName(text)
+        return invalidKeywords.some(invalid => 
+          normalized.includes(invalid) || invalid.includes(normalized)
+        )
+      }
+
       // Função para determinar categoria baseada no texto
       const determineCategory = (text: string): string => {
         const lowerText = text.toLowerCase()
         if (lowerText.includes('design') || lowerText.includes('ui') || lowerText.includes('ux') || 
-            lowerText.includes('visual') || lowerText.includes('criativo')) {
+            lowerText.includes('visual') || lowerText.includes('criativo') || lowerText.includes('motion')) {
           return 'Design'
         } else if (lowerText.includes('gestão') || lowerText.includes('liderança') || 
                    lowerText.includes('gerenciamento') || lowerText.includes('management')) {
@@ -439,7 +473,8 @@ Experiência: ${JSON.stringify(profile.experience || [])}
         } else if (lowerText.includes('front') || lowerText.includes('back') || 
                    lowerText.includes('desenvolvimento') || lowerText.includes('programação') ||
                    lowerText.includes('javascript') || lowerText.includes('python') ||
-                   lowerText.includes('api') || lowerText.includes('web')) {
+                   lowerText.includes('api') || lowerText.includes('web') ||
+                   lowerText.includes('github') || lowerText.includes('interaction')) {
           return 'Tecnologia'
         } else if (lowerText.includes('educação') || lowerText.includes('ensino') || 
                    lowerText.includes('pedagogia')) {
@@ -457,7 +492,13 @@ Experiência: ${JSON.stringify(profile.experience || [])}
       // Adicionar keywords como tags (prioridade alta)
       const keywords = result.result.keywords || []
       keywords
-        .filter((keyword: any) => keyword.relevance && keyword.relevance > 0.5)
+        .filter((keyword: any) => 
+          keyword.relevance && 
+          keyword.relevance > 0.5 &&
+          !isInvalidKeyword(keyword.text) &&
+          keyword.text.length > 2 && // Ignorar palavras muito curtas
+          keyword.text.length < 50 // Ignorar frases muito longas
+        )
         .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
         .forEach((keyword: any) => {
           const normalizedName = normalizeTagName(keyword.text)
@@ -479,7 +520,13 @@ Experiência: ${JSON.stringify(profile.experience || [])}
       if (tags.length < 4) {
         const concepts = result.result.concepts || []
         concepts
-          .filter((concept: any) => concept.relevance && concept.relevance > 0.6)
+          .filter((concept: any) => 
+            concept.relevance && 
+            concept.relevance > 0.6 &&
+            !isInvalidKeyword(concept.text) &&
+            concept.text.length > 2 &&
+            concept.text.length < 50
+          )
           .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
           .forEach((concept: any) => {
             const normalizedName = normalizeTagName(concept.text)
@@ -498,14 +545,16 @@ Experiência: ${JSON.stringify(profile.experience || [])}
           })
       }
 
-      // Se ainda não temos 3-4 tags, adicionar de entities (organizações, tecnologias)
+      // Se ainda não temos 3-4 tags, adicionar de entities (tecnologias específicas)
       if (tags.length < 4) {
         const entities = result.result.entities || []
         entities
           .filter((entity: any) => 
-            entity.type === 'Technology' || 
-            entity.type === 'Organization' ||
-            (entity.relevance && entity.relevance > 0.5)
+            (entity.type === 'Technology' || entity.type === 'Software') &&
+            entity.relevance && entity.relevance > 0.5 &&
+            !isInvalidKeyword(entity.text) &&
+            entity.text.length > 2 &&
+            entity.text.length < 50
           )
           .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
           .forEach((entity: any) => {
@@ -528,7 +577,13 @@ Experiência: ${JSON.stringify(profile.experience || [])}
       // Se ainda não temos 3, pegar mais keywords mesmo que de mesma categoria
       if (tags.length < 3) {
         keywords
-          .filter((keyword: any) => keyword.relevance && keyword.relevance > 0.4)
+          .filter((keyword: any) => 
+            keyword.relevance && 
+            keyword.relevance > 0.4 &&
+            !isInvalidKeyword(keyword.text) &&
+            keyword.text.length > 2 &&
+            keyword.text.length < 50
+          )
           .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
           .forEach((keyword: any) => {
             const normalizedName = normalizeTagName(keyword.text)
