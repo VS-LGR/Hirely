@@ -59,12 +59,14 @@ class WatsonServiceImpl implements WatsonService {
           serviceUrl: process.env.WATSON_ASSISTANT_URL,
         })
         this.assistantId = process.env.WATSON_ASSISTANT_ID
-        // environmentId pode ser o mesmo que assistantId ou uma variável separada
-        this.environmentId = process.env.WATSON_ENVIRONMENT_ID || process.env.WATSON_ASSISTANT_ID
+        // environmentId deve ser o Draft Environment ID ou deixar null (o Watson usa o padrão)
+        // NÃO usar assistantId como fallback - isso causa erro "Resource not found"
+        this.environmentId = process.env.WATSON_ENVIRONMENT_ID || null
         console.log('✅ Watson Assistant inicializado', {
           assistantId: this.assistantId,
-          environmentId: this.environmentId,
+          environmentId: this.environmentId || 'não configurado (usando padrão)',
           hasEnvironmentId: !!process.env.WATSON_ENVIRONMENT_ID,
+          note: this.environmentId ? 'Usando Environment ID configurado' : 'Watson usará o Environment padrão do Assistant',
         })
       } catch (error) {
         console.error('❌ Erro ao inicializar Watson Assistant:', error)
@@ -113,10 +115,14 @@ class WatsonServiceImpl implements WatsonService {
       // Criar ou recuperar sessão
       let sessionId = context?.profile?.sessionId
       if (!sessionId) {
-        const session = await this.assistant.createSession({
+        // Se environmentId não estiver configurado, não passar (Watson usa o padrão)
+        const sessionParams: any = {
           assistantId: this.assistantId!,
-          environmentId: this.environmentId!,
-        })
+        }
+        if (this.environmentId) {
+          sessionParams.environmentId = this.environmentId
+        }
+        const session = await this.assistant.createSession(sessionParams)
         sessionId = session.result.session_id
       }
 
@@ -134,9 +140,8 @@ class WatsonServiceImpl implements WatsonService {
       }
 
       // Enviar mensagem
-      const response = await this.assistant.message({
+      const messageParams: any = {
         assistantId: this.assistantId!,
-        environmentId: this.environmentId!,
         sessionId: sessionId,
         userId: String(userId),
         input: {
@@ -144,7 +149,12 @@ class WatsonServiceImpl implements WatsonService {
           text: message,
         },
         context: userContext,
-      })
+      }
+      // Se environmentId estiver configurado, adicionar
+      if (this.environmentId) {
+        messageParams.environmentId = this.environmentId
+      }
+      const response = await this.assistant.message(messageParams)
 
       const output = response.result.output
 
@@ -369,6 +379,7 @@ class WatsonServiceImpl implements WatsonService {
 
   /**
    * Sugerir tags baseado no perfil
+   * Retorna 3-4 tags diferentes, evitando duplicatas
    */
   async suggestTags(profile: {
     bio?: string
@@ -390,28 +401,150 @@ Experiência: ${JSON.stringify(profile.experience || [])}
         text: profileText,
         features: {
           keywords: {
-            limit: 15,
+            limit: 20,
             sentiment: false,
           },
           concepts: {
-            limit: 10,
+            limit: 15,
+          },
+          entities: {
+            limit: 20,
           },
         },
       })
 
       const tags: Array<{ name: string; category: string }> = []
+      const seenNames = new Set<string>() // Para evitar duplicatas
+      const seenCategories = new Set<string>() // Para garantir diversidade de categorias
 
-      // Adicionar keywords como tags
-      result.result.keywords?.forEach((keyword: any) => {
-        if (keyword.relevance && keyword.relevance > 0.6) {
-          tags.push({
-            name: keyword.text,
-            category: 'Tecnologia',
-          })
+      // Função para normalizar nome de tag
+      const normalizeTagName = (name: string) => 
+        name.toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+
+      // Função para determinar categoria baseada no texto
+      const determineCategory = (text: string): string => {
+        const lowerText = text.toLowerCase()
+        if (lowerText.includes('design') || lowerText.includes('ui') || lowerText.includes('ux') || 
+            lowerText.includes('visual') || lowerText.includes('criativo')) {
+          return 'Design'
+        } else if (lowerText.includes('gestão') || lowerText.includes('liderança') || 
+                   lowerText.includes('gerenciamento') || lowerText.includes('management')) {
+          return 'Gestão'
+        } else if (lowerText.includes('comunicação') || lowerText.includes('marketing') || 
+                   lowerText.includes('vendas') || lowerText.includes('comercial')) {
+          return 'Comunicação'
+        } else if (lowerText.includes('front') || lowerText.includes('back') || 
+                   lowerText.includes('desenvolvimento') || lowerText.includes('programação') ||
+                   lowerText.includes('javascript') || lowerText.includes('python') ||
+                   lowerText.includes('api') || lowerText.includes('web')) {
+          return 'Tecnologia'
+        } else if (lowerText.includes('educação') || lowerText.includes('ensino') || 
+                   lowerText.includes('pedagogia')) {
+          return 'Educação'
+        } else if (lowerText.includes('saúde') || lowerText.includes('médico') || 
+                   lowerText.includes('enfermagem')) {
+          return 'Saúde'
+        } else if (lowerText.includes('finanças') || lowerText.includes('contabilidade') || 
+                   lowerText.includes('financeiro')) {
+          return 'Finanças'
         }
-      })
+        return 'Tecnologia' // Padrão
+      }
 
-      return tags
+      // Adicionar keywords como tags (prioridade alta)
+      const keywords = result.result.keywords || []
+      keywords
+        .filter((keyword: any) => keyword.relevance && keyword.relevance > 0.5)
+        .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
+        .forEach((keyword: any) => {
+          const normalizedName = normalizeTagName(keyword.text)
+          if (!seenNames.has(normalizedName) && tags.length < 6) {
+            const category = determineCategory(keyword.text)
+            // Priorizar diversidade de categorias
+            if (tags.length < 2 || !seenCategories.has(category) || tags.length < 4) {
+              tags.push({
+                name: keyword.text,
+                category,
+              })
+              seenNames.add(normalizedName)
+              seenCategories.add(category)
+            }
+          }
+        })
+
+      // Se ainda não temos 3-4 tags, adicionar de concepts
+      if (tags.length < 4) {
+        const concepts = result.result.concepts || []
+        concepts
+          .filter((concept: any) => concept.relevance && concept.relevance > 0.6)
+          .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
+          .forEach((concept: any) => {
+            const normalizedName = normalizeTagName(concept.text)
+            if (!seenNames.has(normalizedName) && tags.length < 6) {
+              const category = determineCategory(concept.text)
+              // Priorizar diversidade de categorias
+              if (!seenCategories.has(category) || tags.length < 4) {
+                tags.push({
+                  name: concept.text,
+                  category,
+                })
+                seenNames.add(normalizedName)
+                seenCategories.add(category)
+              }
+            }
+          })
+      }
+
+      // Se ainda não temos 3-4 tags, adicionar de entities (organizações, tecnologias)
+      if (tags.length < 4) {
+        const entities = result.result.entities || []
+        entities
+          .filter((entity: any) => 
+            entity.type === 'Technology' || 
+            entity.type === 'Organization' ||
+            (entity.relevance && entity.relevance > 0.5)
+          )
+          .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
+          .forEach((entity: any) => {
+            const normalizedName = normalizeTagName(entity.text)
+            if (!seenNames.has(normalizedName) && tags.length < 6) {
+              const category = determineCategory(entity.text)
+              if (!seenCategories.has(category) || tags.length < 4) {
+                tags.push({
+                  name: entity.text,
+                  category,
+                })
+                seenNames.add(normalizedName)
+                seenCategories.add(category)
+              }
+            }
+          })
+      }
+
+      // Garantir pelo menos 3 tags (se possível)
+      // Se ainda não temos 3, pegar mais keywords mesmo que de mesma categoria
+      if (tags.length < 3) {
+        keywords
+          .filter((keyword: any) => keyword.relevance && keyword.relevance > 0.4)
+          .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
+          .forEach((keyword: any) => {
+            const normalizedName = normalizeTagName(keyword.text)
+            if (!seenNames.has(normalizedName) && tags.length < 4) {
+              const category = determineCategory(keyword.text)
+              tags.push({
+                name: keyword.text,
+                category,
+              })
+              seenNames.add(normalizedName)
+            }
+          })
+      }
+
+      // Retornar 3-4 tags (priorizar as mais relevantes)
+      return tags.slice(0, 4)
     } catch (error: any) {
       console.error('Error suggesting tags with Watson:', error)
       return []
