@@ -3,18 +3,37 @@ import { createError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { aiService } from '../services/aiService'
 import { watsonService } from '../services/watsonService'
+import { watsonXService } from '../services/watsonXService'
 import { extractTextFromFile } from '../utils/resumeParser'
 import { uploadFileToSupabase, downloadFileFromSupabase, deleteFileFromSupabase } from '../utils/supabaseStorage'
 import fs from 'fs'
 import path from 'path'
 
-// Escolher qual serviço usar (Watson se configurado, senão OpenAI)
+// Escolher qual serviço usar (prioridade: WatsonX > Watson Assistant > OpenAI)
 const getAIService = () => {
+  // Prioridade 1: WatsonX (se configurado)
+  const useWatsonX = 
+    process.env.USE_WATSONX === 'true' ||
+    (process.env.WATSONX_API_KEY && process.env.WATSONX_PROJECT_ID)
+  
+  if (useWatsonX) {
+    console.log('✅ Usando WatsonX Service')
+    return watsonXService
+  }
+  
+  // Prioridade 2: Watson Assistant (se configurado)
   const useWatson = 
     process.env.USE_WATSON === 'true' ||
     (process.env.WATSON_ASSISTANT_API_KEY && process.env.WATSON_NLU_API_KEY)
   
-  return useWatson ? watsonService : aiService
+  if (useWatson) {
+    console.log('✅ Usando Watson Assistant Service')
+    return watsonService
+  }
+  
+  // Prioridade 3: OpenAI (fallback)
+  console.log('✅ Usando OpenAI Service')
+  return aiService
 }
 
 export const generateJobDescription = async (

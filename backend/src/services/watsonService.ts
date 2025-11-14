@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import AssistantV2 from 'ibm-watson/assistant/v2'
 import NaturalLanguageUnderstandingV1 from 'ibm-watson/natural-language-understanding/v1'
 import { IamAuthenticator } from 'ibm-watson/auth'
+import { db } from '../database/connection'
 
 dotenv.config()
 
@@ -130,6 +131,51 @@ class WatsonServiceImpl implements WatsonService {
         sessionId = session.result.session_id
       }
 
+      // Detectar se a mensagem menciona reintegração ou cursos
+      const messageLower = message.toLowerCase()
+      const mentionsReintegration = 
+        messageLower.includes('reintegração') ||
+        messageLower.includes('reintegrar') ||
+        messageLower.includes('recolocar') ||
+        messageLower.includes('curso') ||
+        messageLower.includes('cursos') ||
+        messageLower.includes('fiap') ||
+        messageLower.includes('alura') ||
+        messageLower.includes('capacitação') ||
+        messageLower.includes('treinamento')
+
+      // Buscar cursos relevantes se mencionar reintegração
+      let coursesInfo = ''
+      if (mentionsReintegration && context?.profile?.tags) {
+        try {
+          const tagIds = context.profile.tags.map((tag: any) => tag.id || tag).filter(Boolean)
+          if (tagIds.length > 0) {
+            // Fazer requisição HTTP para buscar cursos usando axios
+            const axios = (await import('axios')).default
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3001'
+            const coursesUrl = `${baseUrl}/api/courses/recommended?userTags=${tagIds.join(',')}`
+            
+            const coursesResponse = await axios.get(coursesUrl)
+            if (coursesResponse.data?.success) {
+              const courses = coursesResponse.data.data?.courses || []
+              
+              if (courses.length > 0) {
+                coursesInfo = `\n\nCursos disponíveis para reintegração (baseado nas suas tags):\n`
+                courses.slice(0, 5).forEach((course: any) => {
+                  coursesInfo += `- ${course.title} (${course.provider})`
+                  if (course.category) coursesInfo += ` - ${course.category}`
+                  if (course.url) coursesInfo += ` - ${course.url}`
+                  coursesInfo += '\n'
+                })
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao buscar cursos:', error)
+          // Continuar mesmo se a busca de cursos falhar
+        }
+      }
+
       // Preparar contexto do usuário se disponível
       const userContext: any = {}
       if (context?.profile) {
@@ -141,6 +187,17 @@ class WatsonServiceImpl implements WatsonService {
           education: context.profile.education || [],
           tags: context.profile.tags || [],
         }
+        
+        // Adicionar informações sobre cursos no contexto se relevante
+        if (mentionsReintegration && coursesInfo) {
+          userContext.courses_info = coursesInfo
+        }
+      }
+      
+      // Adicionar informações de cursos à mensagem se mencionar reintegração
+      let enhancedMessage = message
+      if (mentionsReintegration && coursesInfo) {
+        enhancedMessage = `${message}\n\n${coursesInfo}`
       }
 
       // Enviar mensagem
@@ -155,7 +212,7 @@ class WatsonServiceImpl implements WatsonService {
         userId: String(userId),
         input: {
           message_type: 'text',
-          text: message,
+          text: enhancedMessage,
         },
         context: userContext,
       })
@@ -306,30 +363,65 @@ class WatsonServiceImpl implements WatsonService {
         }
       })
 
-      // Criar biografia mais completa e bem formatada
+      // Criar biografia mais completa e bem formatada (2-4 parágrafos)
       const topKeywords = keywords
         .filter((k: any) => k.relevance && k.relevance > 0.5)
-        .slice(0, 8)
+        .slice(0, 12)
         .map((k: any) => k.text)
       
       const topConcepts = concepts
         .filter((c: any) => c.relevance && c.relevance > 0.6)
-        .slice(0, 5)
+        .slice(0, 6)
         .map((c: any) => c.text)
       
-      // Construir biografia profissional
+      // Construir biografia profissional estruturada
       let bio = ''
-      if (topKeywords.length > 0) {
-        bio = `Profissional com experiência sólida em ${topKeywords.slice(0, 3).join(', ')}`
-        if (topKeywords.length > 3) {
-          bio += ` e especialização em ${topKeywords.slice(3, 6).join(', ')}`
+      
+      if (topKeywords.length > 0 || topConcepts.length > 0) {
+        // Primeiro parágrafo: Apresentação e principais competências
+        const mainSkills = topKeywords.slice(0, 4).join(', ')
+        bio = `Profissional com experiência sólida em ${mainSkills}`
+        
+        if (topKeywords.length > 4) {
+          const secondarySkills = topKeywords.slice(4, 7).join(', ')
+          bio += `, com conhecimento adicional em ${secondarySkills}`
         }
+        
         if (topConcepts.length > 0) {
-          bio += `. Domínio em ${topConcepts.slice(0, 2).join(' e ')}`
+          const mainConcepts = topConcepts.slice(0, 2).join(' e ')
+          bio += `. Possui domínio em ${mainConcepts}`
         }
-        bio += '. Perfil focado em resultados e desenvolvimento contínuo de habilidades técnicas e profissionais.'
+        
+        bio += '.\n\n'
+        
+        // Segundo parágrafo: Experiência e resultados
+        if (companies.length > 0) {
+          const mainCompanies = companies.slice(0, 2).join(' e ')
+          bio += `Experiência profissional desenvolvida em empresas como ${mainCompanies}`
+          if (companies.length > 2) {
+            bio += `, entre outras organizações de destaque`
+          }
+          bio += '. '
+        }
+        
+        bio += 'Focado em resultados e na entrega de soluções de alta qualidade, com histórico comprovado de contribuições significativas em projetos desafiadores.\n\n'
+        
+        // Terceiro parágrafo: Diferenciais e objetivos
+        if (topConcepts.length > 2) {
+          const additionalConcepts = topConcepts.slice(2, 4).join(' e ')
+          bio += `Especialização em ${additionalConcepts}, demonstrando capacidade de adaptação e aprendizado contínuo. `
+        }
+        
+        bio += 'Comprometido com a excelência profissional e o desenvolvimento constante de habilidades técnicas e comportamentais, sempre buscando agregar valor e inovação aos projetos e equipes.'
+        
+        // Quarto parágrafo (opcional): Pontos fortes adicionais
+        if (topKeywords.length > 7) {
+          const additionalSkills = topKeywords.slice(7, 10).join(', ')
+          bio += `\n\nAlém disso, possui conhecimento em ${additionalSkills}, ampliando sua versatilidade e capacidade de atuação em diferentes contextos profissionais.`
+        }
       } else {
-        bio = 'Profissional dedicado com experiência em diversas áreas. Comprometido com excelência e crescimento contínuo.'
+        // Bio genérica se não houver keywords/conceitos suficientes
+        bio = 'Profissional dedicado com experiência em diversas áreas, comprometido com excelência e crescimento contínuo. Perfil versátil com capacidade de adaptação e aprendizado rápido, sempre focado em resultados e na entrega de qualidade.'
       }
 
       // Sugerir tags baseadas em keywords e conceitos
@@ -384,7 +476,7 @@ class WatsonServiceImpl implements WatsonService {
   /**
    * Sugerir tags baseado no perfil
    * Retorna 3-4 tags diferentes, evitando duplicatas
-   * IMPORTANTE: Filtra keywords inválidas que não são tags válidas
+   * IMPORTANTE: Filtra keywords inválidas e apenas sugere tags que existem no banco
    */
   async suggestTags(profile: {
     bio?: string
@@ -396,10 +488,41 @@ class WatsonServiceImpl implements WatsonService {
         return []
       }
 
+      // Buscar todas as tags disponíveis do banco
+      let availableTags: Array<{ id: number; name: string; category: string }> = []
+      try {
+        const tagsResult = await db.query(
+          'SELECT id, name, category FROM tags ORDER BY category, name'
+        )
+        availableTags = tagsResult.rows
+        console.log(`📋 Tags disponíveis no banco: ${availableTags.length}`)
+      } catch (dbError) {
+        console.error('Erro ao buscar tags do banco:', dbError)
+        // Continuar mesmo sem tags do banco (fallback)
+      }
+
+      // Criar mapas para busca rápida
+      const tagsByName = new Map<string, { id: number; name: string; category: string }>()
+      const tagsByNormalizedName = new Map<string, { id: number; name: string; category: string }>()
+      
+      availableTags.forEach(tag => {
+        tagsByName.set(tag.name.toLowerCase(), tag)
+        const normalized = tag.name.toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim()
+        tagsByNormalizedName.set(normalized, tag)
+      })
+
       const profileText = `
 Bio: ${profile.bio || 'Não informado'}
 Habilidades: ${profile.skills?.join(', ') || 'Não informado'}
 Experiência: ${JSON.stringify(profile.experience || [])}
+
+Tags disponíveis no sistema (use apenas estas tags):
+${availableTags.length > 0 
+  ? availableTags.map(t => `- ${t.name} (${t.category})`).join('\n')
+  : 'Nenhuma tag disponível'}
 `
 
       const result = await this.nlu.analyze({
@@ -458,7 +581,57 @@ Experiência: ${JSON.stringify(profile.experience || [])}
         )
       }
 
-      // Função para determinar categoria baseada no texto
+      // Função para encontrar tag correspondente no banco
+      const findMatchingTag = (text: string): { name: string; category: string } | null => {
+        const normalizedText = normalizeTagName(text)
+        
+        // Tentar match exato primeiro
+        const exactMatch = tagsByName.get(text.toLowerCase())
+        if (exactMatch) {
+          return { name: exactMatch.name, category: exactMatch.category }
+        }
+        
+        // Tentar match normalizado
+        const normalizedMatch = tagsByNormalizedName.get(normalizedText)
+        if (normalizedMatch) {
+          return { name: normalizedMatch.name, category: normalizedMatch.category }
+        }
+        
+        // Tentar match parcial (palavras-chave)
+        for (const tag of availableTags) {
+          const tagNormalized = normalizeTagName(tag.name)
+          // Match se o texto contém o nome da tag ou vice-versa
+          if (normalizedText.includes(tagNormalized) || tagNormalized.includes(normalizedText)) {
+            // Verificar se não é muito genérico (mínimo 3 caracteres)
+            if (tagNormalized.length >= 3 && normalizedText.length >= 3) {
+              return { name: tag.name, category: tag.category }
+            }
+          }
+        }
+        
+        // Tentar match por categoria (se o texto menciona uma categoria)
+        const categoryKeywords: Record<string, string[]> = {
+          'Tecnologia': ['react', 'javascript', 'python', 'node', 'java', 'sql', 'html', 'css', 'typescript', 'vue', 'angular'],
+          'Design': ['design', 'ui', 'ux', 'figma', 'photoshop', 'illustrator'],
+          'Administração': ['gestão', 'rh', 'recursos humanos', 'administração'],
+          'Vendas': ['vendas', 'comercial', 'atendimento'],
+          'Marketing': ['marketing', 'digital', 'social media', 'seo'],
+        }
+        
+        for (const [category, keywords] of Object.entries(categoryKeywords)) {
+          if (keywords.some(kw => normalizedText.includes(kw) || normalizedText === kw)) {
+            // Buscar primeira tag dessa categoria
+            const categoryTag = availableTags.find(t => t.category === category)
+            if (categoryTag) {
+              return { name: categoryTag.name, category: categoryTag.category }
+            }
+          }
+        }
+        
+        return null
+      }
+
+      // Função para determinar categoria baseada no texto (fallback)
       const determineCategory = (text: string): string => {
         const lowerText = text.toLowerCase()
         if (lowerText.includes('design') || lowerText.includes('ui') || lowerText.includes('ux') || 
@@ -466,10 +639,10 @@ Experiência: ${JSON.stringify(profile.experience || [])}
           return 'Design'
         } else if (lowerText.includes('gestão') || lowerText.includes('liderança') || 
                    lowerText.includes('gerenciamento') || lowerText.includes('management')) {
-          return 'Gestão'
+          return 'Administração'
         } else if (lowerText.includes('comunicação') || lowerText.includes('marketing') || 
                    lowerText.includes('vendas') || lowerText.includes('comercial')) {
-          return 'Comunicação'
+          return 'Vendas'
         } else if (lowerText.includes('front') || lowerText.includes('back') || 
                    lowerText.includes('desenvolvimento') || lowerText.includes('programação') ||
                    lowerText.includes('javascript') || lowerText.includes('python') ||
@@ -484,12 +657,12 @@ Experiência: ${JSON.stringify(profile.experience || [])}
           return 'Saúde'
         } else if (lowerText.includes('finanças') || lowerText.includes('contabilidade') || 
                    lowerText.includes('financeiro')) {
-          return 'Finanças'
+          return 'Administração'
         }
         return 'Tecnologia' // Padrão
       }
 
-      // Adicionar keywords como tags (prioridade alta)
+      // Adicionar keywords como tags (prioridade alta) - apenas se existirem no banco
       const keywords = result.result.keywords || []
       keywords
         .filter((keyword: any) => 
@@ -501,22 +674,24 @@ Experiência: ${JSON.stringify(profile.experience || [])}
         )
         .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
         .forEach((keyword: any) => {
-          const normalizedName = normalizeTagName(keyword.text)
-          if (!seenNames.has(normalizedName) && tags.length < 6) {
-            const category = determineCategory(keyword.text)
-            // Priorizar diversidade de categorias
-            if (tags.length < 2 || !seenCategories.has(category) || tags.length < 4) {
-              tags.push({
-                name: keyword.text,
-                category,
-              })
-              seenNames.add(normalizedName)
-              seenCategories.add(category)
+          const matchingTag = findMatchingTag(keyword.text)
+          if (matchingTag) {
+            const normalizedName = normalizeTagName(matchingTag.name)
+            if (!seenNames.has(normalizedName) && tags.length < 6) {
+              // Priorizar diversidade de categorias
+              if (tags.length < 2 || !seenCategories.has(matchingTag.category) || tags.length < 4) {
+                tags.push({
+                  name: matchingTag.name,
+                  category: matchingTag.category,
+                })
+                seenNames.add(normalizedName)
+                seenCategories.add(matchingTag.category)
+              }
             }
           }
         })
 
-      // Se ainda não temos 3-4 tags, adicionar de concepts
+      // Se ainda não temos 3-4 tags, adicionar de concepts - apenas se existirem no banco
       if (tags.length < 4) {
         const concepts = result.result.concepts || []
         concepts
@@ -529,23 +704,25 @@ Experiência: ${JSON.stringify(profile.experience || [])}
           )
           .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
           .forEach((concept: any) => {
-            const normalizedName = normalizeTagName(concept.text)
-            if (!seenNames.has(normalizedName) && tags.length < 6) {
-              const category = determineCategory(concept.text)
-              // Priorizar diversidade de categorias
-              if (!seenCategories.has(category) || tags.length < 4) {
-                tags.push({
-                  name: concept.text,
-                  category,
-                })
-                seenNames.add(normalizedName)
-                seenCategories.add(category)
+            const matchingTag = findMatchingTag(concept.text)
+            if (matchingTag) {
+              const normalizedName = normalizeTagName(matchingTag.name)
+              if (!seenNames.has(normalizedName) && tags.length < 6) {
+                // Priorizar diversidade de categorias
+                if (!seenCategories.has(matchingTag.category) || tags.length < 4) {
+                  tags.push({
+                    name: matchingTag.name,
+                    category: matchingTag.category,
+                  })
+                  seenNames.add(normalizedName)
+                  seenCategories.add(matchingTag.category)
+                }
               }
             }
           })
       }
 
-      // Se ainda não temos 3-4 tags, adicionar de entities (tecnologias específicas)
+      // Se ainda não temos 3-4 tags, adicionar de entities (tecnologias específicas) - apenas se existirem no banco
       if (tags.length < 4) {
         const entities = result.result.entities || []
         entities
@@ -558,24 +735,26 @@ Experiência: ${JSON.stringify(profile.experience || [])}
           )
           .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
           .forEach((entity: any) => {
-            const normalizedName = normalizeTagName(entity.text)
-            if (!seenNames.has(normalizedName) && tags.length < 6) {
-              const category = determineCategory(entity.text)
-              if (!seenCategories.has(category) || tags.length < 4) {
-                tags.push({
-                  name: entity.text,
-                  category,
-                })
-                seenNames.add(normalizedName)
-                seenCategories.add(category)
+            const matchingTag = findMatchingTag(entity.text)
+            if (matchingTag) {
+              const normalizedName = normalizeTagName(matchingTag.name)
+              if (!seenNames.has(normalizedName) && tags.length < 6) {
+                if (!seenCategories.has(matchingTag.category) || tags.length < 4) {
+                  tags.push({
+                    name: matchingTag.name,
+                    category: matchingTag.category,
+                  })
+                  seenNames.add(normalizedName)
+                  seenCategories.add(matchingTag.category)
+                }
               }
             }
           })
       }
 
       // Garantir pelo menos 3 tags (se possível)
-      // Se ainda não temos 3, pegar mais keywords mesmo que de mesma categoria
-      if (tags.length < 3) {
+      // Se ainda não temos 3, pegar mais keywords mesmo que de mesma categoria - apenas se existirem no banco
+      if (tags.length < 3 && availableTags.length > 0) {
         keywords
           .filter((keyword: any) => 
             keyword.relevance && 
@@ -586,14 +765,16 @@ Experiência: ${JSON.stringify(profile.experience || [])}
           )
           .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
           .forEach((keyword: any) => {
-            const normalizedName = normalizeTagName(keyword.text)
-            if (!seenNames.has(normalizedName) && tags.length < 4) {
-              const category = determineCategory(keyword.text)
-              tags.push({
-                name: keyword.text,
-                category,
-              })
-              seenNames.add(normalizedName)
+            const matchingTag = findMatchingTag(keyword.text)
+            if (matchingTag) {
+              const normalizedName = normalizeTagName(matchingTag.name)
+              if (!seenNames.has(normalizedName) && tags.length < 4) {
+                tags.push({
+                  name: matchingTag.name,
+                  category: matchingTag.category,
+                })
+                seenNames.add(normalizedName)
+              }
             }
           })
       }

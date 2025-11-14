@@ -26,7 +26,7 @@ Você tem **duas opções**:
 #### Opção 2: Deixar Vazio (Usa Assistant ID como Fallback)
 
 1. No **Vercel**, **remova** a variável `WATSON_ENVIRONMENT_ID` ou deixe-a **vazia**
-2. O código automaticamente usará `WATSON_ASSISTANT_ID` como `environmentId`
+2. O código automaticamente usará `` como `environmentId`
 3. **Isso funciona na maioria dos casos**, especialmente se você está usando o ambiente padrão
 
 ## 🔧 Mudanças no Código

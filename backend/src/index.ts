@@ -10,6 +10,7 @@ import { tagRoutes } from './routes/tags'
 import { statsRoutes } from './routes/stats'
 import { applicationRoutes } from './routes/applications'
 import { watsonSearchRoutes } from './routes/watsonSearch'
+import { courseRoutes } from './routes/courses'
 
 dotenv.config()
 
@@ -41,7 +42,8 @@ app.get('/', (req, res) => {
       stats: '/api/stats',
       applications: '/api/applications',
       watsonSearch: '/api/watson-search',
-      watsonSearchEndpoint: '/api/watson-search/search'
+      watsonSearchEndpoint: '/api/watson-search/search',
+      courses: '/api/courses'
     }
   })
 })
@@ -60,6 +62,7 @@ app.use('/api/tags', tagRoutes)
 app.use('/api/stats', statsRoutes)
 app.use('/api/applications', applicationRoutes)
 app.use('/api/watson-search', watsonSearchRoutes)
+app.use('/api/courses', courseRoutes)
 
 // Error handler
 app.use(errorHandler)

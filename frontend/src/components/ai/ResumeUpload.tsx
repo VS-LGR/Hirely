@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Upload, FileText, Loader2 } from 'lucide-react'
+import { ResumeAnalysisModal } from './ResumeAnalysisModal'
 import api from '@/lib/api'
 
 interface ResumeAnalysis {
@@ -118,72 +119,78 @@ export function ResumeUpload({ onAnalysisComplete }: ResumeUploadProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Upload de Currículo
-        </CardTitle>
-        <CardDescription>
-          Faça upload do seu currículo (PDF ou DOCX) para preencher automaticamente seu perfil
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-brown-light rounded-lg cursor-pointer bg-bege-medium hover:bg-bege-light transition-colors">
-            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <Upload className="w-10 h-10 mb-3 text-brown-soft" />
-              <p className="mb-2 text-sm text-brown-dark">
-                <span className="font-semibold">Clique para fazer upload</span> ou arraste o arquivo
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Upload de Currículo
+          </CardTitle>
+          <CardDescription>
+            Faça upload do seu currículo (PDF ou DOCX) para preencher automaticamente seu perfil
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-brown-light rounded-lg cursor-pointer bg-bege-medium hover:bg-bege-light transition-colors">
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <Upload className="w-10 h-10 mb-3 text-brown-soft" />
+                <p className="mb-2 text-sm text-brown-dark">
+                  <span className="font-semibold">Clique para fazer upload</span> ou arraste o arquivo
+                </p>
+                <p className="text-xs text-brown-soft">PDF ou DOCX (MAX. 5MB)</p>
+              </div>
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.doc,.docx"
+                onChange={handleFileChange}
+                disabled={uploadMutation.isPending}
+              />
+            </label>
+          </div>
+
+          {selectedFile && (
+            <div className="p-3 rounded-md bg-bege-medium border border-brown-light">
+              <p className="text-sm text-brown-dark">
+                Arquivo selecionado: <span className="font-medium">{selectedFile.name}</span>
               </p>
-              <p className="text-xs text-brown-soft">PDF ou DOCX (MAX. 5MB)</p>
+              <p className="text-xs text-brown-soft mt-1">
+                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+              </p>
             </div>
-            <input
-              type="file"
-              className="hidden"
-              accept=".pdf,.doc,.docx"
-              onChange={handleFileChange}
-              disabled={uploadMutation.isPending}
-            />
-          </label>
-        </div>
-
-        {selectedFile && (
-          <div className="p-3 rounded-md bg-bege-medium border border-brown-light">
-            <p className="text-sm text-brown-dark">
-              Arquivo selecionado: <span className="font-medium">{selectedFile.name}</span>
-            </p>
-            <p className="text-xs text-brown-soft mt-1">
-              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-            </p>
-          </div>
-        )}
-
-        {error && (
-          <div className="p-3 rounded-md bg-error/10 border border-error text-error text-sm">
-            {error}
-          </div>
-        )}
-
-        <Button
-          onClick={handleUpload}
-          disabled={!selectedFile || uploadMutation.isPending}
-          className="w-full"
-        >
-          {uploadMutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Analisando...
-            </>
-          ) : (
-            <>
-              <Upload className="mr-2 h-4 w-4" />
-              Analisar Currículo
-            </>
           )}
-        </Button>
-      </CardContent>
-    </Card>
+
+          {error && (
+            <div className="p-3 rounded-md bg-error/10 border border-error text-error text-sm">
+              {error}
+            </div>
+          )}
+
+          <Button
+            onClick={handleUpload}
+            disabled={!selectedFile || uploadMutation.isPending}
+            className="w-full"
+          >
+            {uploadMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Analisar Currículo
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+      <ResumeAnalysisModal 
+        open={uploadMutation.isPending} 
+        fileName={selectedFile?.name}
+      />
+    </>
   )
 }
 

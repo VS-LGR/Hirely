@@ -10,6 +10,7 @@ import { TagsInput } from '@/components/ui/tags-input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ResumeUpload } from '@/components/ai/ResumeUpload'
 import { AIAssistant } from '@/components/ai/AIAssistant'
+import { ResumeAnalysisPreview } from '@/components/ai/ResumeAnalysisPreview'
 import { Tag } from '@/types'
 import { Experience, Education } from '@/types'
 import api from '@/lib/api'
@@ -50,6 +51,8 @@ export default function ProfilePage() {
     education: [] as Education[],
   })
   const [showAIAssistant, setShowAIAssistant] = useState(false)
+  const [previewAnalysis, setPreviewAnalysis] = useState<ResumeAnalysis | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -76,6 +79,44 @@ export default function ProfilePage() {
   }, [profile])
 
   const handleResumeAnalysis = async (analysis: ResumeAnalysis) => {
+    // Formatar bio: limpar e validar
+    const formattedBio = analysis.bio
+      ? analysis.bio
+          .trim()
+          .replace(/\n{3,}/g, '\n\n') // Remover múltiplas quebras de linha
+          .replace(/[ \t]+/g, ' ') // Normalizar espaços
+      : ''
+
+    // Criar análise formatada
+    const formattedAnalysis: ResumeAnalysis = {
+      ...analysis,
+      bio: formattedBio,
+      experience: analysis.experience
+        .filter((exp) => exp.company && exp.position) // Filtrar experiências inválidas
+        .map((exp) => ({
+          company: exp.company.trim(),
+          position: exp.position.trim(),
+          startDate: exp.startDate || '',
+          endDate: exp.endDate || undefined,
+          description: exp.description?.trim() || undefined,
+        })),
+      education: analysis.education
+        .filter((edu) => edu.institution && edu.degree) // Filtrar educação inválida
+        .map((edu) => ({
+          institution: edu.institution.trim(),
+          degree: edu.degree.trim(),
+          field: edu.field.trim(),
+          startDate: edu.startDate || '',
+          endDate: edu.endDate || undefined,
+        })),
+    }
+
+    // Mostrar preview antes de aplicar
+    setPreviewAnalysis(formattedAnalysis)
+    setShowPreview(true)
+  }
+
+  const handleApplyAnalysis = async (analysis: ResumeAnalysis) => {
     // Buscar tags sugeridas no banco
     const newTags: Tag[] = []
     for (const suggestedTag of analysis.suggestedTags) {
@@ -93,7 +134,7 @@ export default function ProfilePage() {
       }
     }
 
-    // Atualizar formData com dados extraídos
+    // Atualizar formData com dados extraídos e formatados
     setFormData((prev) => ({
       ...prev,
       bio: analysis.bio || prev.bio,
@@ -113,6 +154,10 @@ export default function ProfilePage() {
       })) as Education[],
       tags: [...prev.tags, ...newTags],
     }))
+
+    // Fechar preview
+    setShowPreview(false)
+    setPreviewAnalysis(null)
   }
 
   const suggestTagsMutation = useMutation({
@@ -375,6 +420,16 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      <ResumeAnalysisPreview
+        open={showPreview}
+        analysis={previewAnalysis}
+        onApply={handleApplyAnalysis}
+        onCancel={() => {
+          setShowPreview(false)
+          setPreviewAnalysis(null)
+        }}
+      />
     </div>
   )
 }

@@ -1,0 +1,229 @@
+{
+  "actions": [
+    {
+      "name": "Bem-vindo",
+      "description": "Saudação inicial da Ellie",
+      "type": "client",
+      "parameters": [],
+      "result_variable": "greeting",
+      "steps": [
+        {
+          "type": "user_input",
+          "variable": "user_name",
+          "prompt": "Olá! Eu sou a Ellie, sua assistente de carreira. Como posso te ajudar hoje?"
+        },
+        {
+          "type": "response",
+          "response_type": "text",
+          "values": [
+            {
+              "text": "Olá! Eu sou a Ellie, sua assistente de carreira. Estou aqui para te ajudar a desenvolver seu perfil profissional e encontrar oportunidades. Como posso te ajudar hoje?"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ajuda com Perfil",
+      "description": "Ajudar candidato a melhorar biografia, experiência e educação",
+      "type": "client",
+      "parameters": [
+        {
+          "name": "tipo_ajuda",
+          "type": "string",
+          "description": "Tipo de ajuda: bio, experiencia, educacao"
+        }
+      ],
+      "result_variable": "profile_help",
+      "steps": [
+        {
+          "type": "user_input",
+          "variable": "tipo_ajuda",
+          "prompt": "Sobre o que você gostaria de ajuda? (biografia, experiência profissional ou educação)"
+        },
+        {
+          "type": "response",
+          "response_type": "text",
+          "values": [
+            {
+              "text": "Vou te ajudar a melhorar seu perfil! Para uma boa biografia, destaque suas principais competências, experiência relevante e objetivos profissionais. Seja claro e objetivo, focando no que te diferencia."
+            }
+          ],
+          "conditions": [
+            {
+              "condition": "{{tipo_ajuda}} == 'bio'",
+              "response": "Para sua biografia, destaque suas principais competências técnicas e comportamentais. Mencione anos de experiência e áreas de atuação. Seja autêntico e mostre sua paixão pela área."
+            },
+            {
+              "condition": "{{tipo_ajuda}} == 'experiencia'",
+              "response": "Para descrever sua experiência, use o método STAR: Situação, Tarefa, Ação e Resultado. Destaque conquistas mensuráveis e impactos positivos que você gerou."
+            },
+            {
+              "condition": "{{tipo_ajuda}} == 'educacao'",
+              "response": "Na seção de educação, inclua cursos relevantes, certificações e formações que agreguem valor ao seu perfil. Não esqueça de mencionar projetos acadêmicos importantes."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sugestão de Tags",
+      "description": "Sugerir tags baseado no perfil do candidato",
+      "type": "client",
+      "parameters": [
+        {
+          "name": "perfil_info",
+          "type": "string",
+          "description": "Informações do perfil (bio, habilidades, experiência)"
+        }
+      ],
+      "result_variable": "suggested_tags",
+      "steps": [
+        {
+          "type": "response",
+          "response_type": "text",
+          "values": [
+            {
+              "text": "Vou analisar seu perfil e sugerir as melhores tags para destacar suas competências. Isso ajudará recrutadores a te encontrar mais facilmente."
+            }
+          ]
+        },
+        {
+          "type": "action",
+          "name": "suggest_tags",
+          "parameters": {
+            "bio": "{{perfil_info}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reintegração ao Mercado",
+      "description": "Ajudar candidato a encontrar cursos para reintegração ao mercado de trabalho",
+      "type": "client",
+      "parameters": [
+        {
+          "name": "area_risco",
+          "type": "string",
+          "description": "Área que está em risco devido ao avanço da IA"
+        },
+        {
+          "name": "area_anterior",
+          "type": "string",
+          "description": "Área de atuação anterior do candidato"
+        }
+      ],
+      "result_variable": "course_recommendations",
+      "steps": [
+        {
+          "type": "user_input",
+          "variable": "area_risco",
+          "prompt": "Qual área sua vaga está em risco devido ao avanço da IA? (ex: atendimento, operações, análise de dados)"
+        },
+        {
+          "type": "user_input",
+          "variable": "area_anterior",
+          "prompt": "Qual era sua área de atuação anterior? Isso me ajudará a encontrar cursos que combinem com seu perfil."
+        },
+        {
+          "type": "response",
+          "response_type": "text",
+          "values": [
+            {
+              "text": "Entendo sua situação. Vou buscar cursos na FIAP e Alura que possam te ajudar a se recolocar no mercado de trabalho, combinando suas áreas anteriores com novas competências em alta demanda."
+            }
+          ]
+        },
+        {
+          "type": "action",
+          "name": "search_courses",
+          "parameters": {
+            "area": "{{area_anterior}}",
+            "provider": "FIAP,ALURA"
+          }
+        },
+        {
+          "type": "response",
+          "response_type": "text",
+          "values": [
+            {
+              "text": "Encontrei alguns cursos que podem te ajudar! Recomendo focar em áreas como desenvolvimento de software, análise de dados, marketing digital ou gestão de projetos. Essas são áreas com alta demanda e menos suscetíveis à automação."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Análise de Currículo",
+      "description": "Orientar candidato sobre upload e análise de currículo",
+      "type": "client",
+      "parameters": [],
+      "result_variable": "resume_guidance",
+      "steps": [
+        {
+          "type": "response",
+          "response_type": "text",
+          "values": [
+            {
+              "text": "Posso te ajudar a analisar seu currículo! Faça upload do seu currículo em PDF ou DOCX na página de perfil. Vou extrair informações sobre suas habilidades, experiência e educação, e sugerir melhorias para seu perfil profissional."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dicas de Carreira",
+      "description": "Fornecer conselhos gerais sobre carreira",
+      "type": "client",
+      "parameters": [
+        {
+          "name": "topico",
+          "type": "string",
+          "description": "Tópico de interesse do candidato"
+        }
+      ],
+      "result_variable": "career_tips",
+      "steps": [
+        {
+          "type": "user_input",
+          "variable": "topico",
+          "prompt": "Sobre qual aspecto da carreira você gostaria de dicas? (entrevistas, networking, desenvolvimento de habilidades, etc.)"
+        },
+        {
+          "type": "response",
+          "response_type": "text",
+          "values": [
+            {
+              "text": "Aqui estão algumas dicas valiosas para sua carreira:"
+            }
+          ],
+          "conditions": [
+            {
+              "condition": "{{topico}} contains 'entrevista'",
+              "response": "Para entrevistas: pesquise sobre a empresa, prepare exemplos concretos de suas conquistas, faça perguntas relevantes e demonstre interesse genuíno pela vaga e pela empresa."
+            },
+            {
+              "condition": "{{topico}} contains 'networking'",
+              "response": "Para networking: participe de eventos da área, mantenha seu LinkedIn atualizado, ofereça ajuda antes de pedir, e seja autêntico nas interações. Networking é sobre construir relacionamentos genuínos."
+            },
+            {
+              "condition": "{{topico}} contains 'habilidade' or {{topico}} contains 'desenvolvimento'",
+              "response": "Para desenvolvimento de habilidades: identifique as competências mais demandadas na sua área, faça cursos práticos, trabalhe em projetos pessoais e busque feedback constante. A prática é essencial!"
+            },
+            {
+              "condition": "default",
+              "response": "Algumas dicas gerais: mantenha-se atualizado com as tendências da sua área, invista em aprendizado contínuo, construa um portfólio sólido e não tenha medo de sair da zona de conforto. O mercado valoriza profissionais proativos e adaptáveis."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "created_at": "2025-01-13",
+    "description": "Actions da Ellie - Assistente de Carreira para o Hirely",
+    "language": "pt-BR"
+  }
+}
+

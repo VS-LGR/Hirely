@@ -123,3 +123,29 @@ export const searchTags = async (
   }
 }
 
+/**
+ * Listar todas as tags disponíveis
+ * Retorna todas as tags com id, name e category
+ * Útil para enviar lista completa para serviços de IA
+ */
+export const listAllTags = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await db.query(
+      'SELECT id, name, category FROM tags ORDER BY category, name'
+    )
+
+    res.json({
+      success: true,
+      data: {
+        tags: result.rows,
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+

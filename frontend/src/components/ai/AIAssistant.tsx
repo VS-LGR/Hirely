@@ -5,7 +5,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { MessageCircle, Send, Loader2 } from 'lucide-react'
+import { MessageCircle, Send, Loader2, Sparkles } from 'lucide-react'
 import api from '@/lib/api'
 
 interface Message {
@@ -17,14 +17,23 @@ interface AIAssistantProps {
   className?: string
 }
 
+// Quick replies sugeridas
+const QUICK_REPLIES = [
+  'Como melhorar minha biografia?',
+  'Sugerir tags para meu perfil',
+  'Preciso de ajuda com reintegração ao mercado',
+  'Dicas para entrevistas',
+]
+
 export function AIAssistant({ className }: AIAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Olá! Sou seu assistente de carreira. Como posso ajudá-lo a construir um perfil profissional completo hoje?',
+      content: 'Olá! Sou a Ellie, sua assistente de carreira. Como posso ajudá-lo a construir um perfil profissional completo hoje?',
     },
   ])
   const [input, setInput] = useState('')
+  const [showQuickReplies, setShowQuickReplies] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const chatMutation = useMutation({
@@ -41,26 +50,60 @@ export function AIAssistant({ className }: AIAssistantProps) {
         { role: 'assistant', content: response },
       ])
       setInput('')
+      setShowQuickReplies(false) // Ocultar quick replies após primeira mensagem
     },
     onError: (error: any) => {
-      const errorMessage = error.response?.data?.error?.message || error.message || 'Erro ao processar mensagem'
+      let errorMessage = 'Erro ao processar mensagem'
+      
+      // Melhor tratamento de erros
+      if (error.response?.data?.error?.message) {
+        errorMessage = error.response.data.error.message
+      } else if (error.message) {
+        errorMessage = error.message
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Não autenticado. Por favor, faça login novamente.'
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Apenas candidatos podem usar o assistente.'
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Erro interno do servidor. Por favor, tente novamente mais tarde.'
+      }
+      
       setMessages((prev) => [
         ...prev,
         { 
           role: 'assistant', 
-          content: `❌ ${errorMessage}\n\nPor favor, tente novamente ou verifique sua configuração da API OpenAI.` 
+          content: `❌ **Erro:** ${errorMessage}\n\nPor favor, tente novamente. Se o problema persistir, verifique sua conexão ou entre em contato com o suporte.` 
         },
       ])
       setInput('')
     },
   })
 
-  const handleSend = () => {
-    if (!input.trim() || chatMutation.isPending) return
+  const handleSend = (message?: string) => {
+    const messageToSend = message || input.trim()
+    if (!messageToSend || chatMutation.isPending) return
 
-    const userMessage = input.trim()
-    setMessages((prev) => [...prev, { role: 'user', content: userMessage }])
-    chatMutation.mutate(userMessage)
+    setMessages((prev) => [...prev, { role: 'user', content: messageToSend }])
+    setInput('')
+    setShowQuickReplies(false)
+    chatMutation.mutate(messageToSend)
+  }
+
+  const handleQuickReply = (reply: string) => {
+    handleSend(reply)
+  }
+  
+  // Função para formatar markdown básico
+  const formatMessage = (text: string) => {
+    // Converter **texto** para negrito
+    let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    // Converter *texto* para itálico
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>')
+    // Converter quebras de linha
+    formatted = formatted.replace(/\n/g, '<br />')
+    // Converter links básicos
+    formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary underline">$1</a>')
+    return formatted
   }
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -78,11 +121,11 @@ export function AIAssistant({ className }: AIAssistantProps) {
     <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <MessageCircle className="h-5 w-5" />
-          Assistente de Carreira
+          <Sparkles className="h-5 w-5 text-primary" />
+          Ellie - Assistente de Carreira
         </CardTitle>
         <CardDescription>
-          Pergunte-me sobre como melhorar seu perfil, sugerir tags ou qualquer dúvida sobre sua carreira
+          Pergunte-me sobre como melhorar seu perfil, sugerir tags, reintegração ao mercado ou qualquer dúvida sobre sua carreira
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -99,7 +142,10 @@ export function AIAssistant({ className }: AIAssistantProps) {
                     : 'bg-bege-medium text-brown-dark border border-brown-light'
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <div 
+                  className="text-sm prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }}
+                />
               </div>
             </div>
           ))}
@@ -112,6 +158,26 @@ export function AIAssistant({ className }: AIAssistantProps) {
           )}
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Quick Replies */}
+        {showQuickReplies && messages.length === 1 && (
+          <div className="space-y-2">
+            <p className="text-xs text-brown-soft">Sugestões rápidas:</p>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_REPLIES.map((reply, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQuickReply(reply)}
+                  className="text-xs"
+                >
+                  {reply}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-2">
           <Input
