@@ -134,22 +134,40 @@ export default function ProfilePage() {
           const response = await api.get(`/tags/search?q=${encodeURIComponent(suggestedTag.name)}`)
           const tags = response.data.data.tags as Tag[]
           
+          // Normalizar strings para comparação (remover acentos, espaços extras, etc.)
+          const normalize = (str: string) => 
+            str.toLowerCase()
+               .normalize('NFD')
+               .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+               .replace(/\s+/g, ' ') // Normaliza espaços
+               .trim()
+          
+          const normalizedSuggested = normalize(suggestedTag.name)
+          
           // Tentar encontrar correspondência exata primeiro
           let matchingTag = tags.find(
-            (t) => t.name.toLowerCase() === suggestedTag.name.toLowerCase()
+            (t) => normalize(t.name) === normalizedSuggested
           )
           
-          // Se não encontrar exato, tentar correspondência parcial
+          // Se não encontrar exato, tentar correspondência parcial (palavras-chave)
           if (!matchingTag) {
-            matchingTag = tags.find(
-              (t) => t.name.toLowerCase().includes(suggestedTag.name.toLowerCase()) ||
-                    suggestedTag.name.toLowerCase().includes(t.name.toLowerCase())
-            )
+            const suggestedWords = normalizedSuggested.split(/\s+/).filter(w => w.length > 2)
+            matchingTag = tags.find((t) => {
+              const tagName = normalize(t.name)
+              // Verificar se alguma palavra-chave está presente
+              return suggestedWords.some(word => tagName.includes(word)) ||
+                     tagName.split(/\s+/).some(word => normalizedSuggested.includes(word))
+            })
           }
           
-          // Se ainda não encontrar, usar a primeira tag da categoria
+          // Se ainda não encontrar, tentar correspondência por categoria
           if (!matchingTag && tags.length > 0) {
-            matchingTag = tags.find(t => t.category === suggestedTag.category) || tags[0]
+            matchingTag = tags.find(t => t.category === suggestedTag.category)
+          }
+          
+          // Última tentativa: usar a primeira tag retornada pela busca
+          if (!matchingTag && tags.length > 0) {
+            matchingTag = tags[0]
           }
           
           if (matchingTag && !formData.tags.some((t) => t.id === matchingTag.id)) {

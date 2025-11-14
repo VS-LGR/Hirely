@@ -73,16 +73,44 @@ export const searchTags = async (
       throw createError('Query de busca é obrigatória', 400)
     }
 
-    const searchQuery = `%${q.toLowerCase()}%`
-    const result = await db.query(
-      `SELECT * FROM tags 
-       WHERE LOWER(name) LIKE $1 OR LOWER(category) LIKE $1 
-       ORDER BY 
-         CASE WHEN LOWER(name) LIKE $2 THEN 1 ELSE 2 END,
-         category, name
-       LIMIT 50`,
-      [searchQuery, `%${q.toLowerCase()}%`]
-    )
+    // Normalizar a busca (remover acentos, espaços extras)
+    const normalizedQuery = q.toLowerCase().trim()
+    const searchQuery = `%${normalizedQuery}%`
+    
+    // Buscar correspondências exatas primeiro, depois parciais
+    // Também busca por palavras individuais (palavras com mais de 2 caracteres)
+    const words = normalizedQuery.split(/\s+/).filter(w => w.length > 2)
+    
+    // Construir query dinâmica para palavras-chave
+    let whereClause = `LOWER(name) LIKE $1 OR LOWER(category) LIKE $1`
+    const params: any[] = [searchQuery]
+    
+    if (words.length > 0) {
+      const wordParams: string[] = []
+      words.forEach((word, index) => {
+        const paramIndex = params.length + 1
+        params.push(`%${word}%`)
+        wordParams.push(`LOWER(name) LIKE $${paramIndex}`)
+      })
+      whereClause += ` OR (${wordParams.join(' OR ')})`
+    }
+    
+    const query = `
+      SELECT * FROM tags 
+      WHERE ${whereClause}
+      ORDER BY 
+        CASE 
+          WHEN LOWER(name) = $${params.length + 1} THEN 1
+          WHEN LOWER(name) LIKE $${params.length + 2} THEN 2
+          ELSE 3
+        END,
+        category, name
+      LIMIT 50
+    `
+    
+    params.push(normalizedQuery, searchQuery)
+
+    const result = await db.query(query, params)
 
     res.json({
       success: true,

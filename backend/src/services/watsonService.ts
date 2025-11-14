@@ -61,7 +61,11 @@ class WatsonServiceImpl implements WatsonService {
         this.assistantId = process.env.WATSON_ASSISTANT_ID
         // environmentId pode ser o mesmo que assistantId ou uma variável separada
         this.environmentId = process.env.WATSON_ENVIRONMENT_ID || process.env.WATSON_ASSISTANT_ID
-        console.log('✅ Watson Assistant inicializado')
+        console.log('✅ Watson Assistant inicializado', {
+          assistantId: this.assistantId,
+          environmentId: this.environmentId,
+          hasEnvironmentId: !!process.env.WATSON_ENVIRONMENT_ID,
+        })
       } catch (error) {
         console.error('❌ Erro ao inicializar Watson Assistant:', error)
       }
@@ -166,6 +170,14 @@ class WatsonServiceImpl implements WatsonService {
       return 'Desculpe, não consegui processar sua mensagem.'
     } catch (error: any) {
       console.error('Error in Watson chatWithAssistant:', error)
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status || error.statusCode,
+        code: error.code,
+        assistantId: this.assistantId,
+        environmentId: this.environmentId,
+        response: error.response?.data || error.body,
+      })
       
       // Tratar erro específico de "No valid skills found"
       if (error.message && error.message.includes('No valid skills found')) {
@@ -173,6 +185,24 @@ class WatsonServiceImpl implements WatsonService {
           'O Watson Assistant não possui skills configurados. ' +
           'Por favor, configure pelo menos uma skill/action no IBM Cloud. ' +
           'Acesse o Watson Assistant no IBM Cloud e crie uma skill básica.'
+        )
+      }
+      
+      // Tratar erro "Resource not found" (404)
+      if (
+        error.message?.includes('Resource not found') ||
+        error.message?.includes('404') ||
+        error.status === 404 ||
+        error.statusCode === 404
+      ) {
+        console.error('❌ Resource not found - Verificando IDs:')
+        console.error('   Assistant ID:', this.assistantId)
+        console.error('   Environment ID:', this.environmentId)
+        throw new Error(
+          'Recurso não encontrado no Watson Assistant. ' +
+          'Verifique se WATSON_ASSISTANT_ID e WATSON_ENVIRONMENT_ID estão corretos no Vercel. ' +
+          `Assistant ID atual: ${this.assistantId || 'não configurado'}, ` +
+          `Environment ID atual: ${this.environmentId || 'não configurado'}`
         )
       }
       
