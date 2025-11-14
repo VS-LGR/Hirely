@@ -14,7 +14,7 @@ export const getUserProfile = async (
     }
 
     const result = await db.query(
-      `SELECT u.id, u.email, u.name, u.role, u.bio, u.skills, u.experience, u.education, u.created_at,
+      `SELECT u.id, u.email, u.name, u.role, u.bio, u.skills, u.experience, u.education, u.strengths, u.suggestions, u.created_at,
        COALESCE(
          json_agg(
            json_build_object('id', t.id, 'name', t.name, 'category', t.category)
@@ -57,7 +57,7 @@ export const updateUserProfile = async (
       throw createError('Não autenticado', 401)
     }
 
-    const { name, bio, skills, experience, education, tag_ids } = req.body
+    const { name, bio, skills, experience, education, strengths, suggestions, tag_ids } = req.body
 
     // Iniciar transação
     await db.query('BEGIN')
@@ -70,10 +70,12 @@ export const updateUserProfile = async (
           skills = COALESCE($3, skills),
           experience = COALESCE($4, experience),
           education = COALESCE($5, education),
+          strengths = COALESCE($6, strengths),
+          suggestions = COALESCE($7, suggestions),
           updated_at = NOW()
-        WHERE id = $6
-        RETURNING id, email, name, role, bio, skills, experience, education, created_at`,
-        [name, bio, skills, experience, education, req.user.id]
+        WHERE id = $8
+        RETURNING id, email, name, role, bio, skills, experience, education, strengths, suggestions, created_at`,
+        [name, bio, skills, experience, education, strengths, suggestions, req.user.id]
       )
 
       // Atualizar tags se fornecidas
@@ -96,7 +98,7 @@ export const updateUserProfile = async (
 
       // Buscar usuário com tags atualizadas
       const userWithTags = await db.query(
-        `SELECT u.id, u.email, u.name, u.role, u.bio, u.skills, u.experience, u.education, u.created_at,
+        `SELECT u.id, u.email, u.name, u.role, u.bio, u.skills, u.experience, u.education, u.strengths, u.suggestions, u.created_at,
          COALESCE(
            json_agg(
              json_build_object('id', t.id, 'name', t.name, 'category', t.category)

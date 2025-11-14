@@ -17,6 +17,8 @@ export interface User {
   tags?: Tag[]
   experience?: Experience[]
   education?: Education[]
+  strengths?: string[]
+  suggestions?: string[]
   created_at: string
 }
 

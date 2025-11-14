@@ -21,9 +21,9 @@ interface ResumeAnalysis {
   skills: string[]
   experience: Array<{
     company: string
-    position: string
+    position: string | null
     startDate: string
-    endDate?: string
+    endDate?: string | null
     description?: string
   }>
   education: Array<{
@@ -31,7 +31,7 @@ interface ResumeAnalysis {
     degree: string
     field: string
     startDate: string
-    endDate?: string
+    endDate?: string | null
   }>
   bio?: string
   suggestedTags: Array<{ name: string; category: string }>
@@ -49,6 +49,8 @@ export default function ProfilePage() {
     tags: [] as Tag[],
     experience: [] as Experience[],
     education: [] as Education[],
+    strengths: [] as string[],
+    suggestions: [] as string[],
   })
   const [showAIAssistant, setShowAIAssistant] = useState(false)
   const [previewAnalysis, setPreviewAnalysis] = useState<ResumeAnalysis | null>(null)
@@ -74,6 +76,8 @@ export default function ProfilePage() {
         tags: profile.tags || [],
         experience: profile.experience || [],
         education: profile.education || [],
+        strengths: profile.strengths || [],
+        suggestions: profile.suggestions || [],
       })
     }
   }, [profile])
@@ -92,12 +96,12 @@ export default function ProfilePage() {
       ...analysis,
       bio: formattedBio,
       experience: analysis.experience
-        .filter((exp) => exp.company && exp.position) // Filtrar experiências inválidas
+        .filter((exp) => exp.company && (exp.position || exp.description)) // Aceitar se tiver company e (position ou description)
         .map((exp) => ({
           company: exp.company.trim(),
-          position: exp.position.trim(),
+          position: exp.position?.trim() || null,
           startDate: exp.startDate || '',
-          endDate: exp.endDate || undefined,
+          endDate: exp.endDate || null,
           description: exp.description?.trim() || undefined,
         })),
       education: analysis.education
@@ -117,15 +121,60 @@ export default function ProfilePage() {
   }
 
   const handleApplyAnalysis = async (analysis: ResumeAnalysis) => {
-    // Buscar tags sugeridas no banco
+    // Buscar tags sugeridas no banco usando a mesma lógica robusta do suggestTagsMutation
     const newTags: Tag[] = []
     for (const suggestedTag of analysis.suggestedTags) {
       try {
         const response = await api.get(`/tags/search?q=${encodeURIComponent(suggestedTag.name)}`)
         const tags = response.data.data.tags as Tag[]
-        const matchingTag = tags.find(
-          (t) => t.name.toLowerCase() === suggestedTag.name.toLowerCase()
+        
+        // Normalizar strings para comparação (remover acentos, espaços extras, etc.)
+        const normalize = (str: string) => 
+          str.toLowerCase()
+             .normalize('NFD')
+             .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+             .replace(/\s+/g, ' ') // Normaliza espaços
+             .trim()
+        
+        const normalizedSuggested = normalize(suggestedTag.name)
+        
+        // Tentar encontrar correspondência exata primeiro
+        let matchingTag = tags.find(
+          (t) => normalize(t.name) === normalizedSuggested
         )
+        
+        // Se não encontrar exato, tentar correspondência parcial (palavras-chave)
+        if (!matchingTag) {
+          const suggestedWords = normalizedSuggested.split(/\s+/).filter(w => w.length > 2)
+          const normalizedSuggestedClean = normalizedSuggested.replace(/[-_]/g, ' ')
+          
+          matchingTag = tags.find((t) => {
+            const tagName = normalize(t.name)
+            const tagNameClean = tagName.replace(/[-_]/g, ' ')
+            
+            return suggestedWords.some(word => tagName.includes(word) || tagNameClean.includes(word)) ||
+                   tagName.split(/\s+/).some(word => normalizedSuggested.includes(word) || normalizedSuggestedClean.includes(word)) ||
+                   tagNameClean === normalizedSuggestedClean ||
+                   tagNameClean.includes(normalizedSuggestedClean) ||
+                   normalizedSuggestedClean.includes(tagNameClean)
+          })
+        }
+        
+        // Se ainda não encontrar, tentar correspondência por categoria e palavras-chave
+        if (!matchingTag && tags.length > 0) {
+          const suggestedWords = normalizedSuggested.split(/\s+/).filter(w => w.length > 2)
+          matchingTag = tags.find((t) => {
+            const tagName = normalize(t.name)
+            return t.category === suggestedTag.category && 
+                   suggestedWords.some(word => tagName.includes(word))
+          })
+        }
+        
+        // Se ainda não encontrar, usar primeira tag da categoria
+        if (!matchingTag && tags.length > 0) {
+          matchingTag = tags.find(t => t.category === suggestedTag.category) || tags[0]
+        }
+        
         if (matchingTag && !formData.tags.some((t) => t.id === matchingTag.id)) {
           newTags.push(matchingTag)
         }
@@ -134,25 +183,37 @@ export default function ProfilePage() {
       }
     }
 
+    // Filtrar e formatar experiências (aceitar mesmo sem position se tiver company e description)
+    const validExperiences = analysis.experience
+      .filter((exp) => exp.company && (exp.position || exp.description))
+      .map((exp) => ({
+        company: exp.company.trim(),
+        position: exp.position?.trim() || 'Cargo não especificado',
+        startDate: exp.startDate || '',
+        endDate: exp.endDate || undefined,
+        description: exp.description?.trim() || undefined,
+      })) as Experience[]
+
+    // Filtrar e formatar educação
+    const validEducation = analysis.education
+      .filter((edu) => edu.institution && edu.degree)
+      .map((edu) => ({
+        institution: edu.institution.trim(),
+        degree: edu.degree.trim(),
+        field: edu.field?.trim() || '',
+        startDate: edu.startDate || '',
+        endDate: edu.endDate || undefined,
+      })) as Education[]
+
     // Atualizar formData com dados extraídos e formatados
     setFormData((prev) => ({
       ...prev,
       bio: analysis.bio || prev.bio,
-      experience: analysis.experience.map((exp) => ({
-        company: exp.company,
-        position: exp.position,
-        startDate: exp.startDate,
-        endDate: exp.endDate,
-        description: exp.description,
-      })) as Experience[],
-      education: analysis.education.map((edu) => ({
-        institution: edu.institution,
-        degree: edu.degree,
-        field: edu.field,
-        startDate: edu.startDate,
-        endDate: edu.endDate,
-      })) as Education[],
+      experience: validExperiences.length > 0 ? validExperiences : prev.experience,
+      education: validEducation.length > 0 ? validEducation : prev.education,
       tags: [...prev.tags, ...newTags],
+      strengths: analysis.strengths && analysis.strengths.length > 0 ? analysis.strengths : prev.strengths,
+      suggestions: analysis.suggestions && analysis.suggestions.length > 0 ? analysis.suggestions : prev.suggestions,
     }))
 
     // Fechar preview
@@ -272,6 +333,8 @@ export default function ProfilePage() {
       tag_ids: formData.tags.map((tag) => tag.id),
       experience: formData.experience,
       education: formData.education,
+      strengths: formData.strengths,
+      suggestions: formData.suggestions,
     })
   }
 
@@ -388,6 +451,310 @@ export default function ProfilePage() {
                       Selecione suas habilidades e competências para melhorar suas recomendações de vagas
                     </p>
                   </div>
+
+                  {/* Experiência de Trabalho */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">Experiência de Trabalho</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            experience: [
+                              ...prev.experience,
+                              {
+                                company: '',
+                                position: '',
+                                startDate: '',
+                                endDate: '',
+                                description: '',
+                              },
+                            ],
+                          }))
+                        }}
+                      >
+                        + Adicionar Experiência
+                      </Button>
+                    </div>
+                    {formData.experience.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">
+                        Nenhuma experiência cadastrada. Adicione suas experiências profissionais.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {formData.experience.map((exp, index) => (
+                          <Card key={index} className="bg-bege-medium">
+                            <CardContent className="pt-4 space-y-3">
+                              <div className="flex justify-between items-start">
+                                <h4 className="font-semibold text-brown-dark">
+                                  Experiência {index + 1}
+                                </h4>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      experience: prev.experience.filter((_, i) => i !== index),
+                                    }))
+                                  }}
+                                  className="text-error hover:text-error"
+                                >
+                                  Remover
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Empresa *</Label>
+                                  <Input
+                                    value={exp.company}
+                                    onChange={(e) => {
+                                      const newExp = [...formData.experience]
+                                      newExp[index].company = e.target.value
+                                      setFormData({ ...formData, experience: newExp })
+                                    }}
+                                    placeholder="Nome da empresa"
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Cargo *</Label>
+                                  <Input
+                                    value={exp.position}
+                                    onChange={(e) => {
+                                      const newExp = [...formData.experience]
+                                      newExp[index].position = e.target.value
+                                      setFormData({ ...formData, experience: newExp })
+                                    }}
+                                    placeholder="Cargo/Posição"
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Data de Início *</Label>
+                                  <Input
+                                    type="month"
+                                    value={exp.startDate}
+                                    onChange={(e) => {
+                                      const newExp = [...formData.experience]
+                                      newExp[index].startDate = e.target.value
+                                      setFormData({ ...formData, experience: newExp })
+                                    }}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Data de Término</Label>
+                                  <Input
+                                    type="month"
+                                    value={exp.endDate || ''}
+                                    onChange={(e) => {
+                                      const newExp = [...formData.experience]
+                                      newExp[index].endDate = e.target.value || undefined
+                                      setFormData({ ...formData, experience: newExp })
+                                    }}
+                                    placeholder="Em andamento se vazio"
+                                  />
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Descrição</Label>
+                                <Textarea
+                                  value={exp.description || ''}
+                                  onChange={(e) => {
+                                    const newExp = [...formData.experience]
+                                    newExp[index].description = e.target.value || undefined
+                                    setFormData({ ...formData, experience: newExp })
+                                  }}
+                                  placeholder="Descreva suas responsabilidades e conquistas..."
+                                  rows={3}
+                                />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Escolaridade */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">Escolaridade</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            education: [
+                              ...prev.education,
+                              {
+                                institution: '',
+                                degree: '',
+                                field: '',
+                                startDate: '',
+                                endDate: '',
+                              },
+                            ],
+                          }))
+                        }}
+                      >
+                        + Adicionar Formação
+                      </Button>
+                    </div>
+                    {formData.education.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">
+                        Nenhuma formação cadastrada. Adicione sua escolaridade.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {formData.education.map((edu, index) => (
+                          <Card key={index} className="bg-bege-medium">
+                            <CardContent className="pt-4 space-y-3">
+                              <div className="flex justify-between items-start">
+                                <h4 className="font-semibold text-brown-dark">
+                                  Formação {index + 1}
+                                </h4>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      education: prev.education.filter((_, i) => i !== index),
+                                    }))
+                                  }}
+                                  className="text-error hover:text-error"
+                                >
+                                  Remover
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Instituição *</Label>
+                                  <Input
+                                    value={edu.institution}
+                                    onChange={(e) => {
+                                      const newEdu = [...formData.education]
+                                      newEdu[index].institution = e.target.value
+                                      setFormData({ ...formData, education: newEdu })
+                                    }}
+                                    placeholder="Nome da instituição"
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Grau *</Label>
+                                  <Input
+                                    value={edu.degree}
+                                    onChange={(e) => {
+                                      const newEdu = [...formData.education]
+                                      newEdu[index].degree = e.target.value
+                                      setFormData({ ...formData, education: newEdu })
+                                    }}
+                                    placeholder="Ex: Bacharelado, Mestrado, Técnico"
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Área de Estudo</Label>
+                                  <Input
+                                    value={edu.field}
+                                    onChange={(e) => {
+                                      const newEdu = [...formData.education]
+                                      newEdu[index].field = e.target.value
+                                      setFormData({ ...formData, education: newEdu })
+                                    }}
+                                    placeholder="Ex: Ciência da Computação, Design"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Data de Início *</Label>
+                                  <Input
+                                    type="month"
+                                    value={edu.startDate}
+                                    onChange={(e) => {
+                                      const newEdu = [...formData.education]
+                                      newEdu[index].startDate = e.target.value
+                                      setFormData({ ...formData, education: newEdu })
+                                    }}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-1 col-span-2">
+                                  <Label className="text-xs">Data de Conclusão</Label>
+                                  <Input
+                                    type="month"
+                                    value={edu.endDate || ''}
+                                    onChange={(e) => {
+                                      const newEdu = [...formData.education]
+                                      newEdu[index].endDate = e.target.value || undefined
+                                      setFormData({ ...formData, education: newEdu })
+                                    }}
+                                    placeholder="Em andamento se vazio"
+                                  />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Outras Informações da Análise */}
+                  {(formData.strengths.length > 0 || formData.suggestions.length > 0) && (
+                    <div className="space-y-4">
+                      <Label className="text-base font-semibold">Outras Informações</Label>
+                      
+                      {formData.strengths.length > 0 && (
+                        <Card className="bg-bege-medium">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-semibold text-brown-dark">
+                              Pontos Fortes Identificados
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <ul className="space-y-2">
+                              {formData.strengths.map((strength, index) => (
+                                <li key={index} className="flex items-start gap-2 text-sm text-brown-soft">
+                                  <span className="text-primary mt-1">•</span>
+                                  <span>{strength}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {formData.suggestions.length > 0 && (
+                        <Card className="bg-bege-medium">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-semibold text-brown-dark">
+                              Sugestões de Desenvolvimento
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <ul className="space-y-2">
+                              {formData.suggestions.map((suggestion, index) => (
+                                <li key={index} className="flex items-start gap-2 text-sm text-brown-soft">
+                                  <span className="text-primary mt-1">•</span>
+                                  <span>{suggestion}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex gap-4">
                     <Button type="submit" disabled={updateMutation.isPending}>
