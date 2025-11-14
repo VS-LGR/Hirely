@@ -24,7 +24,7 @@ class WatsonXServiceImpl implements AIService {
     this.apiKey = process.env.WATSONX_API_KEY || null
     this.projectId = process.env.WATSONX_PROJECT_ID || null
     this.apiUrl = process.env.WATSONX_API_URL || 'https://us-south.ml.cloud.ibm.com'
-    this.modelId = process.env.WATSONX_MODEL_ID || 'meta-llama/llama-3-70b-instruct'
+    this.modelId = process.env.WATSONX_MODEL_ID || 'meta-llama/llama-3-3-70b-instruct'
     this.deploymentId = process.env.WATSONX_DEPLOYMENT_ID || null
     this.apiVersion = process.env.WATSONX_API_VERSION || '2021-05-01'
     
@@ -240,51 +240,60 @@ class WatsonXServiceImpl implements AIService {
       // Log completo da resposta para debug
       console.log('WatsonX Deployment Response:', JSON.stringify(response.data, null, 2))
 
-      // Resposta do chat deployment - pode ter diferentes formatos
-      if (response.data.results && response.data.results.length > 0) {
+      // Formato 1: Array direto (formato mais comum do WatsonX chat)
+      // [{ index: 0, message: { role: "assistant", content: "..." }, finish_reason: "stop" }]
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        const firstItem = response.data[0]
+        if (firstItem.message && firstItem.message.content) {
+          return firstItem.message.content.trim()
+        }
+        if (firstItem.message && firstItem.message.text) {
+          return firstItem.message.text.trim()
+        }
+      }
+
+      // Formato 2: response.data.results (formato alternativo)
+      if (response.data.results && Array.isArray(response.data.results) && response.data.results.length > 0) {
         const result = response.data.results[0]
         
-        // Formato 1: result.message.content
+        // result.message.content
         if (result.message) {
           const content = result.message.content || result.message.text
-          if (content) return content
+          if (content) return content.trim()
         }
         
-        // Formato 2: result.content diretamente
+        // result.content
         if (result.content) {
-          return result.content
+          return result.content.trim()
         }
         
-        // Formato 3: result.text
+        // result.text
         if (result.text) {
-          return result.text
+          return result.text.trim()
         }
         
-        // Formato 4: result.generated_text
+        // result.generated_text
         if (result.generated_text) {
-          return result.generated_text
+          return result.generated_text.trim()
         }
       }
 
-      // Fallback: verificar se há mensagem no nível raiz
+      // Formato 3: Nível raiz direto
       if (response.data.message) {
         const content = response.data.message.content || response.data.message.text
-        if (content) return content
+        if (content) return content.trim()
       }
 
-      // Fallback: content no nível raiz
       if (response.data.content) {
-        return response.data.content
+        return response.data.content.trim()
       }
 
-      // Fallback: text no nível raiz
       if (response.data.text) {
-        return response.data.text
+        return response.data.text.trim()
       }
 
-      // Fallback: generated_text no nível raiz
       if (response.data.generated_text) {
-        return response.data.generated_text
+        return response.data.generated_text.trim()
       }
 
       // Se chegou aqui, a resposta está vazia ou em formato desconhecido
@@ -727,33 +736,45 @@ Seja preciso e sugira apenas tags que existem na lista acima.`
         // Log completo da resposta para debug
         console.log('WatsonX Chat Response:', JSON.stringify(response.data, null, 2))
 
-        // Extrair resposta - tentar diferentes formatos
-        if (response.data.results && response.data.results.length > 0) {
+        // Formato 1: Array direto (formato mais comum do WatsonX chat)
+        // [{ index: 0, message: { role: "assistant", content: "..." }, finish_reason: "stop" }]
+        if (Array.isArray(response.data) && response.data.length > 0) {
+          const firstItem = response.data[0]
+          if (firstItem.message && firstItem.message.content) {
+            return firstItem.message.content.trim()
+          }
+          if (firstItem.message && firstItem.message.text) {
+            return firstItem.message.text.trim()
+          }
+        }
+
+        // Formato 2: response.data.results (formato alternativo)
+        if (response.data.results && Array.isArray(response.data.results) && response.data.results.length > 0) {
           const result = response.data.results[0]
           
-          // Formato 1: result.message.content
+          // result.message.content
           if (result.message) {
             const content = result.message.content || result.message.text
             if (content) return content.trim()
           }
           
-          // Formato 2: result.content
+          // result.content
           if (result.content) {
             return result.content.trim()
           }
           
-          // Formato 3: result.text
+          // result.text
           if (result.text) {
             return result.text.trim()
           }
           
-          // Formato 4: result.generated_text
+          // result.generated_text
           if (result.generated_text) {
             return result.generated_text.trim()
           }
         }
 
-        // Fallback: verificar nível raiz
+        // Formato 3: Nível raiz direto
         if (response.data.message) {
           const content = response.data.message.content || response.data.message.text
           if (content) return content.trim()
