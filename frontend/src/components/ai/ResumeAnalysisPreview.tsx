@@ -18,17 +18,17 @@ interface ResumeAnalysis {
   skills: string[]
   experience: Array<{
     company: string
-    position: string
+    position: string | null
     startDate: string
-    endDate?: string
-    description?: string
+    endDate?: string | null
+    description?: string | null
   }>
   education: Array<{
     institution: string
     degree: string
     field: string
     startDate: string
-    endDate?: string
+    endDate?: string | null
   }>
   bio?: string
   suggestedTags: Array<{ name: string; category: string }>
@@ -216,7 +216,7 @@ export function ResumeAnalysisPreview({
                     key={index}
                     className="p-3 rounded-md bg-bege-medium border border-brown-light"
                   >
-                    <p className="font-medium text-brown-dark">{exp.position}</p>
+                    <p className="font-medium text-brown-dark">{exp.position || 'Cargo não especificado'}</p>
                     <p className="text-sm text-brown-soft">{exp.company}</p>
                     <p className="text-xs text-brown-soft mt-1">
                       {exp.startDate} - {exp.endDate || 'Atual'}

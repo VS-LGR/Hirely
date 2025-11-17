@@ -8,21 +8,22 @@ import { Upload, FileText, Loader2 } from 'lucide-react'
 import { ResumeAnalysisModal } from './ResumeAnalysisModal'
 import api from '@/lib/api'
 
+// Interface deve corresponder à interface em page.tsx
 interface ResumeAnalysis {
   skills: string[]
   experience: Array<{
     company: string
-    position: string
+    position: string | null
     startDate: string
-    endDate?: string
-    description?: string
+    endDate?: string | null
+    description?: string | null
   }>
   education: Array<{
     institution: string
     degree: string
     field: string
     startDate: string
-    endDate?: string
+    endDate?: string | null
   }>
   bio?: string
   suggestedTags: Array<{ name: string; category: string }>
