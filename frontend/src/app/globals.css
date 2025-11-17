@@ -45,6 +45,13 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, sans-serif;
+    position: relative;
+  }
+  
+  /* Garantir que conteúdo fique acima do background animado */
+  main, [role="main"] {
+    position: relative;
+    z-index: 1;
   }
 }
 
@@ -61,6 +68,32 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* Animações de bolhas no background */
+@keyframes bubbleFloat {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  5% {
+    opacity: var(--bubble-opacity, 0.1);
+  }
+  50% {
+    transform: translateY(-50vh) scale(1.1);
+    opacity: calc(var(--bubble-opacity, 0.1) * 0.7);
+  }
+  95% {
+    opacity: calc(var(--bubble-opacity, 0.1) * 0.3);
+  }
+  100% {
+    transform: translateY(-100vh) scale(1.4);
+    opacity: 0;
+  }
+}
+
+.bubble-float {
+  will-change: transform, opacity;
 }
 
 
