@@ -227,6 +227,21 @@ export const uploadAndAnalyzeResume = async (
         }
       }
       
+      // Tratar erros específicos de rate limit/quota
+      const errorMessage = parseError.message || ''
+      if (
+        errorMessage.includes('Limite de requisições') ||
+        errorMessage.includes('rate limit') ||
+        errorMessage.includes('quota') ||
+        errorMessage.includes('429') ||
+        parseError.statusCode === 429
+      ) {
+        throw createError(
+          'Limite de requisições da API excedido. Por favor, aguarde alguns minutos antes de tentar novamente. Se o problema persistir, verifique seu plano da IBM Cloud WatsonX.',
+          429
+        )
+      }
+      
       if (parseError.message) {
         throw createError(parseError.message, parseError.statusCode || 500)
       }

@@ -64,16 +64,18 @@ export function ResumeUpload({ onAnalysisComplete }: ResumeUploadProps) {
       
       if (err.response) {
         const contentType = err.response.headers['content-type'] || ''
+        const status = err.response.status
         
         // Se a resposta não é JSON, pode ser uma página de erro HTML/XML
         if (!contentType.includes('application/json')) {
-          const status = err.response.status
           if (status === 404) {
             errorMessage = 'Endpoint não encontrado. Verifique se o backend está configurado corretamente.'
           } else if (status === 405) {
             errorMessage = 'Método não permitido. Verifique a configuração do servidor.'
           } else if (status === 500) {
             errorMessage = 'Erro interno do servidor. Verifique os logs do backend.'
+          } else if (status === 429) {
+            errorMessage = 'Limite de requisições excedido. Aguarde alguns minutos antes de tentar novamente.'
           } else {
             errorMessage = `Erro do servidor (${status}). A resposta não está em formato JSON.`
           }
@@ -86,10 +88,19 @@ export function ResumeUpload({ onAnalysisComplete }: ResumeUploadProps) {
       }
       
       // Mensagens mais amigáveis para erros específicos
-      if (errorMessage.includes('quota') || errorMessage.includes('cota')) {
-        setError('Cota da API OpenAI excedida. Por favor, verifique seu plano e detalhes de cobrança na OpenAI.')
+      if (
+        errorMessage.includes('Limite de requisições') ||
+        errorMessage.includes('rate limit') ||
+        errorMessage.includes('quota') ||
+        errorMessage.includes('cota') ||
+        errorMessage.includes('429') ||
+        err.response?.status === 429
+      ) {
+        setError(
+          'Limite de requisições da API excedido. Por favor, aguarde alguns minutos antes de tentar novamente. Se o problema persistir, verifique seu plano da IBM Cloud WatsonX.'
+        )
       } else if (errorMessage.includes('API key') || errorMessage.includes('chave')) {
-        setError('Chave da API OpenAI não configurada ou inválida.')
+        setError('Chave da API não configurada ou inválida. Verifique as configurações do servidor.')
       } else if (errorMessage.includes('Unexpected token') || errorMessage.includes('is not valid JSON')) {
         setError('O servidor retornou uma resposta inválida. Verifique se o backend está funcionando corretamente.')
       } else {
