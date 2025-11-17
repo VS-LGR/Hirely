@@ -162,26 +162,63 @@ class WatsonXServiceImpl implements AIService {
 
       throw new Error('Resposta vazia do WatsonX')
     } catch (error: any) {
-      console.error('Erro ao chamar WatsonX API:', {
-        status: error.response?.status,
+      const status = error.response?.status
+      const headers = error.response?.headers || {}
+      const retryAfter = headers['retry-after'] || headers['Retry-After']
+      
+      console.error('❌ Erro ao chamar WatsonX API:', {
+        status,
         statusText: error.response?.statusText,
         data: error.response?.data,
         message: error.message,
+        retryAfter: retryAfter ? `${retryAfter} segundos` : 'não especificado',
+        rateLimitRemaining: headers['x-ratelimit-remaining'] || headers['X-RateLimit-Remaining'],
+        rateLimitReset: headers['x-ratelimit-reset'] || headers['X-RateLimit-Reset'],
+        fullHeaders: process.env.NODE_ENV === 'development' ? headers : undefined,
       })
 
-      if (error.response?.status === 401) {
+      if (status === 401) {
         // Token pode ter expirado, tentar renovar
         this.iamToken = null
         this.tokenExpiry = 0
         throw new Error('Token IAM expirado ou inválido. Tente novamente.')
       }
 
-      if (error.response?.status === 400) {
-        throw new Error(`Erro na requisição: ${error.response.data?.errors?.[0]?.message || 'Requisição inválida'}`)
+      if (status === 400) {
+        const errorMsg = error.response.data?.errors?.[0]?.message || 'Requisição inválida'
+        throw new Error(`Erro na requisição: ${errorMsg}`)
       }
 
-      if (error.response?.status === 429) {
-        throw new Error('Limite de requisições excedido. Tente novamente mais tarde.')
+      if (status === 429) {
+        // Rate limit excedido - pode ser por tempo (req/min) ou tokens
+        const errorData = error.response?.data
+        const errorMsg = errorData?.errors?.[0]?.message || errorData?.message || ''
+        
+        let message = 'Limite de requisições excedido.'
+        
+        // Verificar se há informação sobre quando tentar novamente
+        if (retryAfter) {
+          const seconds = parseInt(retryAfter)
+          const minutes = Math.ceil(seconds / 60)
+          message += ` Aguarde ${minutes} minuto(s) antes de tentar novamente.`
+        } else {
+          message += ' Tente novamente em alguns minutos.'
+        }
+        
+        // Adicionar informação sobre tipo de limite se disponível
+        if (errorMsg.includes('rate limit') || errorMsg.includes('too many requests')) {
+          message += ' (Limite de requisições por período de tempo excedido - não relacionado ao limite de tokens mensais)'
+        } else if (errorMsg.includes('quota') || errorMsg.includes('token')) {
+          message += ' (Limite de tokens pode ter sido excedido)'
+        }
+        
+        console.error('⚠️ Rate Limit Detalhes:', {
+          retryAfter,
+          errorMessage: errorMsg,
+          suggestion: 'Verifique se há limites de requisições por minuto/hora no seu plano WatsonX',
+        })
+        
+        throw new Error(message)
       }
 
       throw new Error(`Erro ao processar requisição: ${error.response?.data?.errors?.[0]?.message || error.message}`)
@@ -300,25 +337,59 @@ class WatsonXServiceImpl implements AIService {
       console.error('Formato de resposta desconhecido:', response.data)
       throw new Error('Resposta vazia do WatsonX Deployment')
     } catch (error: any) {
-      console.error('Erro ao chamar WatsonX Deployment API:', {
-        status: error.response?.status,
+      const status = error.response?.status
+      const headers = error.response?.headers || {}
+      const retryAfter = headers['retry-after'] || headers['Retry-After']
+      
+      console.error('❌ Erro ao chamar WatsonX Deployment API:', {
+        status,
         statusText: error.response?.statusText,
         data: error.response?.data,
         message: error.message,
+        retryAfter: retryAfter ? `${retryAfter} segundos` : 'não especificado',
+        rateLimitRemaining: headers['x-ratelimit-remaining'] || headers['X-RateLimit-Remaining'],
+        rateLimitReset: headers['x-ratelimit-reset'] || headers['X-RateLimit-Reset'],
+        deploymentId: this.deploymentId?.substring(0, 8) + '...',
       })
 
-      if (error.response?.status === 401) {
+      if (status === 401) {
         this.iamToken = null
         this.tokenExpiry = 0
         throw new Error('Token IAM expirado ou inválido. Tente novamente.')
       }
 
-      if (error.response?.status === 400) {
-        throw new Error(`Erro na requisição: ${error.response.data?.errors?.[0]?.message || 'Requisição inválida'}`)
+      if (status === 400) {
+        const errorMsg = error.response.data?.errors?.[0]?.message || 'Requisição inválida'
+        throw new Error(`Erro na requisição: ${errorMsg}`)
       }
 
-      if (error.response?.status === 429) {
-        throw new Error('Limite de requisições excedido. Tente novamente mais tarde.')
+      if (status === 429) {
+        const errorData = error.response?.data
+        const errorMsg = errorData?.errors?.[0]?.message || errorData?.message || ''
+        
+        let message = 'Limite de requisições excedido.'
+        
+        if (retryAfter) {
+          const seconds = parseInt(retryAfter)
+          const minutes = Math.ceil(seconds / 60)
+          message += ` Aguarde ${minutes} minuto(s) antes de tentar novamente.`
+        } else {
+          message += ' Tente novamente em alguns minutos.'
+        }
+        
+        if (errorMsg.includes('rate limit') || errorMsg.includes('too many requests')) {
+          message += ' (Limite de requisições por período de tempo excedido - não relacionado ao limite de tokens mensais)'
+        } else if (errorMsg.includes('quota') || errorMsg.includes('token')) {
+          message += ' (Limite de tokens pode ter sido excedido)'
+        }
+        
+        console.error('⚠️ Rate Limit Detalhes (Deployment API):', {
+          retryAfter,
+          errorMessage: errorMsg,
+          suggestion: 'Verifique se há limites de requisições por minuto/hora no seu plano WatsonX. Isso é diferente do limite de tokens mensais.',
+        })
+        
+        throw new Error(message)
       }
 
       throw new Error(`Erro ao processar requisição: ${error.response?.data?.errors?.[0]?.message || error.message}`)
