@@ -3,6 +3,7 @@ import AssistantV2 from 'ibm-watson/assistant/v2'
 import NaturalLanguageUnderstandingV1 from 'ibm-watson/natural-language-understanding/v1'
 import { IamAuthenticator } from 'ibm-watson/auth'
 import { db } from '../database/connection'
+import { AIService, ReintegrationAnalysis } from './aiService'
 
 dotenv.config()
 
@@ -34,7 +35,7 @@ export interface WatsonService {
   suggestTags: (profile: { bio?: string; skills?: string[]; experience?: any[] }) => Promise<Array<{ name: string; category: string }>>
 }
 
-class WatsonServiceImpl implements WatsonService {
+class WatsonServiceImpl implements WatsonService, AIService {
   private assistant: AssistantV2 | null = null
   private nlu: NaturalLanguageUnderstandingV1 | null = null
   private assistantId: string | null = null
@@ -785,6 +786,45 @@ ${availableTags.length > 0
       console.error('Error suggesting tags with Watson:', error)
       return []
     }
+  }
+
+  /**
+   * Analisar reintegração ao mercado de trabalho
+   * Implementação básica - Watson Assistant não suporta análise estruturada como WatsonX
+   */
+  async analyzeReintegration(
+    currentArea: string,
+    profile?: { bio?: string; experience?: any[]; tags?: any[] }
+  ): Promise<ReintegrationAnalysis> {
+    // Watson Assistant não tem capacidade de análise estruturada como WatsonX
+    // Retornar estrutura vazia - recomendar usar WatsonX para esta funcionalidade
+    return {
+      currentArea,
+      suggestedAreas: {
+        natural: [],
+        adjacent: [],
+        strategic: [],
+      },
+      recommendedCategories: [],
+    }
+  }
+
+  // Métodos da interface AIService que não são suportados pelo Watson Assistant
+  async generateJobDescription(title: string, requirements: string[]): Promise<string> {
+    throw new Error('generateJobDescription não é suportado pelo Watson Assistant. Use WatsonX ou OpenAI.')
+  }
+
+  async analyzeResume(resume: string): Promise<any> {
+    // Usar analyzeResumeDetailed como fallback
+    return this.analyzeResumeDetailed(resume)
+  }
+
+  async suggestImprovements(text: string, type: 'resume' | 'cover_letter'): Promise<string> {
+    throw new Error('suggestImprovements não é suportado pelo Watson Assistant. Use WatsonX ou OpenAI.')
+  }
+
+  async generateMatchScore(jobDescription: string, candidateProfile: string): Promise<number> {
+    throw new Error('generateMatchScore não é suportado pelo Watson Assistant. Use WatsonX ou OpenAI.')
   }
 }
 

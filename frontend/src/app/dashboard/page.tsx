@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import api from '@/lib/api'
+import { TrendingUp } from 'lucide-react'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -121,6 +122,24 @@ export default function DashboardPage() {
                   <CardContent>
                     <Button variant="outline" className="w-full border-brown-soft text-brown-dark hover:bg-brown-light transition-all duration-300">
                       Editar Perfil
+                    </Button>
+                  </CardContent>
+                </Link>
+              </Card>
+              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+                <Link href="/dashboard/reintegration">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                      Reintegração ao Mercado
+                    </CardTitle>
+                    <CardDescription>
+                      Descubra novas áreas e cursos para se recolocar no mercado do futuro
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
+                      Explorar
                     </Button>
                   </CardContent>
                 </Link>
