@@ -188,11 +188,11 @@ export default function ProfilePage() {
       .filter((exp) => exp.company && (exp.position || exp.description))
       .map((exp) => ({
         company: exp.company.trim(),
-        position: exp.position?.trim() || 'Cargo não especificado',
+        position: exp.position?.trim() || null,
         startDate: exp.startDate || '',
-        endDate: exp.endDate || undefined,
-        description: exp.description?.trim() || undefined,
-      })) as Experience[]
+        endDate: exp.endDate || null,
+        description: exp.description?.trim() || null,
+      }))
 
     // Filtrar e formatar educação
     const validEducation = analysis.education
@@ -202,8 +202,8 @@ export default function ProfilePage() {
         degree: edu.degree.trim(),
         field: edu.field?.trim() || '',
         startDate: edu.startDate || '',
-        endDate: edu.endDate || undefined,
-      })) as Education[]
+        endDate: edu.endDate || null,
+      }))
 
     // Atualizar formData com dados extraídos e formatados
     setFormData((prev) => ({
@@ -323,18 +323,41 @@ export default function ProfilePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-profile'] })
     },
+    onError: (error: any) => {
+      console.error('Error updating profile:', error)
+      console.error('Error response:', error.response?.data)
+    },
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Garantir que arrays sempre sejam enviados (não undefined)
+    // Converter undefined para null nos objetos dentro dos arrays para compatibilidade com JSONB
+    const cleanExperience = (formData.experience || []).map((exp) => ({
+      company: exp.company || '',
+      position: exp.position || null,
+      startDate: exp.startDate || '',
+      endDate: exp.endDate || null,
+      description: exp.description || null,
+    }))
+    
+    const cleanEducation = (formData.education || []).map((edu) => ({
+      institution: edu.institution || '',
+      degree: edu.degree || '',
+      field: edu.field || '',
+      startDate: edu.startDate || '',
+      endDate: edu.endDate || null,
+    }))
+    
     updateMutation.mutate({
-      name: formData.name,
-      bio: formData.bio,
+      name: formData.name || '',
+      bio: formData.bio || null,
       tag_ids: formData.tags.map((tag) => tag.id),
-      experience: formData.experience,
-      education: formData.education,
-      strengths: formData.strengths,
-      suggestions: formData.suggestions,
+      experience: cleanExperience,
+      education: cleanEducation,
+      strengths: formData.strengths || [],
+      suggestions: formData.suggestions || [],
     })
   }
 
@@ -524,14 +547,13 @@ export default function ProfilePage() {
                                 <div className="space-y-1">
                                   <Label className="text-xs">Cargo *</Label>
                                   <Input
-                                    value={exp.position}
+                                    value={exp.position || ''}
                                     onChange={(e) => {
                                       const newExp = [...formData.experience]
-                                      newExp[index].position = e.target.value
+                                      newExp[index].position = e.target.value || null
                                       setFormData({ ...formData, experience: newExp })
                                     }}
                                     placeholder="Cargo/Posição"
-                                    required
                                   />
                                 </div>
                                 <div className="space-y-1">
@@ -554,7 +576,7 @@ export default function ProfilePage() {
                                     value={exp.endDate || ''}
                                     onChange={(e) => {
                                       const newExp = [...formData.experience]
-                                      newExp[index].endDate = e.target.value || undefined
+                                      newExp[index].endDate = e.target.value || null
                                       setFormData({ ...formData, experience: newExp })
                                     }}
                                     placeholder="Em andamento se vazio"
@@ -565,11 +587,11 @@ export default function ProfilePage() {
                                 <Label className="text-xs">Descrição</Label>
                                 <Textarea
                                   value={exp.description || ''}
-                                  onChange={(e) => {
-                                    const newExp = [...formData.experience]
-                                    newExp[index].description = e.target.value || undefined
-                                    setFormData({ ...formData, experience: newExp })
-                                  }}
+                                    onChange={(e) => {
+                                      const newExp = [...formData.experience]
+                                      newExp[index].description = e.target.value || null
+                                      setFormData({ ...formData, experience: newExp })
+                                    }}
                                   placeholder="Descreva suas responsabilidades e conquistas..."
                                   rows={3}
                                 />
@@ -695,7 +717,7 @@ export default function ProfilePage() {
                                     value={edu.endDate || ''}
                                     onChange={(e) => {
                                       const newEdu = [...formData.education]
-                                      newEdu[index].endDate = e.target.value || undefined
+                                      newEdu[index].endDate = e.target.value || null
                                       setFormData({ ...formData, education: newEdu })
                                     }}
                                     placeholder="Em andamento se vazio"

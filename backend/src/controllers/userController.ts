@@ -59,6 +59,14 @@ export const updateUserProfile = async (
 
     const { name, bio, skills, experience, education, strengths, suggestions, tag_ids } = req.body
 
+    // Validar e limpar dados JSONB antes de inserir
+    // Garantir que arrays sejam sempre arrays válidos (não undefined)
+    const cleanExperience = Array.isArray(experience) ? JSON.stringify(experience) : JSON.stringify([])
+    const cleanEducation = Array.isArray(education) ? JSON.stringify(education) : JSON.stringify([])
+    const cleanSkills = Array.isArray(skills) ? JSON.stringify(skills) : JSON.stringify([])
+    const cleanStrengths = Array.isArray(strengths) ? JSON.stringify(strengths) : JSON.stringify([])
+    const cleanSuggestions = Array.isArray(suggestions) ? JSON.stringify(suggestions) : JSON.stringify([])
+
     // Iniciar transação
     await db.query('BEGIN')
 
@@ -67,15 +75,15 @@ export const updateUserProfile = async (
         `UPDATE users SET
           name = COALESCE($1, name),
           bio = COALESCE($2, bio),
-          skills = COALESCE($3, skills),
-          experience = COALESCE($4, experience),
-          education = COALESCE($5, education),
-          strengths = COALESCE($6, strengths),
-          suggestions = COALESCE($7, suggestions),
+          skills = $3::jsonb,
+          experience = $4::jsonb,
+          education = $5::jsonb,
+          strengths = $6::jsonb,
+          suggestions = $7::jsonb,
           updated_at = NOW()
         WHERE id = $8
         RETURNING id, email, name, role, bio, skills, experience, education, strengths, suggestions, created_at`,
-        [name, bio, skills, experience, education, strengths, suggestions, req.user.id]
+        [name || null, bio || null, cleanSkills, cleanExperience, cleanEducation, cleanStrengths, cleanSuggestions, req.user.id]
       )
 
       // Atualizar tags se fornecidas
@@ -122,11 +130,22 @@ export const updateUserProfile = async (
           },
         },
       })
-    } catch (error) {
+    } catch (error: any) {
       await db.query('ROLLBACK')
-      throw error
+      console.error('Error updating user profile:', error)
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        detail: error.detail,
+        constraint: error.constraint,
+      })
+      throw createError(
+        error.message || 'Erro ao atualizar perfil',
+        error.statusCode || 500
+      )
     }
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Error in updateUserProfile:', error)
     next(error)
   }
 }

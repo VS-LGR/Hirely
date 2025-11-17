@@ -24,10 +24,10 @@ export interface User {
 
 export interface Experience {
   company: string
-  position: string
+  position: string | null
   startDate: string
-  endDate?: string
-  description?: string
+  endDate?: string | null
+  description?: string | null
 }
 
 export interface Education {
@@ -35,7 +35,7 @@ export interface Education {
   degree: string
   field: string
   startDate: string
-  endDate?: string
+  endDate?: string | null
 }
 
 export interface Job {
