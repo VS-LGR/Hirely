@@ -1056,26 +1056,95 @@ Analise e sugira áreas de transição para reintegração ao mercado de trabalh
         true // forceDirectGeneration
       )
 
-      // Extrair JSON da resposta
-      let jsonMatch = response.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
+      // Extrair JSON da resposta - procurar por um JSON válido e balanceado
+      console.log('📝 Resposta completa do WatsonX (primeiros 500 chars):', response.substring(0, 500))
+      
+      // Tentar encontrar JSON válido na resposta
+      let analysis: ReintegrationAnalysis | null = null
+      
+      // Método 1: Tentar parse direto
+      try {
+        const parsed = JSON.parse(response.trim())
+        if (parsed && typeof parsed === 'object' && parsed.suggestedAreas) {
+          analysis = parsed as ReintegrationAnalysis
+          console.log('✅ JSON parseado diretamente')
+        }
+      } catch (e) {
+        // Continuar para outros métodos
+      }
+      
+      // Método 2: Procurar por JSON balanceado usando regex mais inteligente
+      if (!analysis) {
+        // Procurar por { ... } balanceado
+        let depth = 0
+        let start = -1
+        let jsonStr = ''
+        
+        for (let i = 0; i < response.length; i++) {
+          if (response[i] === '{') {
+            if (depth === 0) start = i
+            depth++
+            jsonStr += response[i]
+          } else if (response[i] === '}') {
+            jsonStr += response[i]
+            depth--
+            if (depth === 0 && start !== -1) {
+              // Encontramos um JSON balanceado
+              try {
+                const parsed = JSON.parse(jsonStr)
+                if (parsed && typeof parsed === 'object' && parsed.suggestedAreas) {
+                  analysis = parsed as ReintegrationAnalysis
+                  console.log('✅ JSON encontrado e parseado (método balanceado)')
+                  break
+                }
+              } catch (e) {
+                // Continuar procurando
+                jsonStr = ''
+                start = -1
+              }
+            }
+          } else if (start !== -1) {
+            jsonStr += response[i]
+          }
+        }
+      }
+      
+      // Método 3: Procurar por padrão JSON com regex (fallback)
+      if (!analysis) {
+        const jsonMatch = response.match(/\{[\s\S]*"suggestedAreas"[\s\S]*\}/)
+        if (jsonMatch) {
+          try {
+            const parsed = JSON.parse(jsonMatch[0])
+            if (parsed && typeof parsed === 'object' && parsed.suggestedAreas) {
+              analysis = parsed as ReintegrationAnalysis
+              console.log('✅ JSON encontrado via regex')
+            }
+          } catch (e) {
+            console.error('❌ Erro ao parsear JSON do regex:', e)
+          }
+        }
+      }
+      
+      if (!analysis) {
+        console.error('❌ Não foi possível extrair JSON válido da resposta')
+        console.error('Resposta completa:', response)
         throw new Error('Resposta não contém JSON válido')
       }
 
-      const analysis = JSON.parse(jsonMatch[0]) as ReintegrationAnalysis
+      const finalAnalysis = analysis
 
       // Validar estrutura
-      if (!analysis.suggestedAreas || !analysis.recommendedCategories) {
+      if (!finalAnalysis.suggestedAreas || !finalAnalysis.recommendedCategories) {
         throw new Error('Estrutura de resposta inválida')
       }
 
       // Garantir que todas as categorias existam
-      analysis.suggestedAreas.natural = analysis.suggestedAreas.natural || []
-      analysis.suggestedAreas.adjacent = analysis.suggestedAreas.adjacent || []
-      analysis.suggestedAreas.strategic = analysis.suggestedAreas.strategic || []
-      analysis.recommendedCategories = analysis.recommendedCategories || []
+      finalAnalysis.suggestedAreas.natural = finalAnalysis.suggestedAreas.natural || []
+      finalAnalysis.suggestedAreas.adjacent = finalAnalysis.suggestedAreas.adjacent || []
+      finalAnalysis.suggestedAreas.strategic = finalAnalysis.suggestedAreas.strategic || []
+      finalAnalysis.recommendedCategories = finalAnalysis.recommendedCategories || []
 
-      return analysis
+      return finalAnalysis
     } catch (error: any) {
       console.error('Erro ao analisar reintegração:', error)
       throw new Error(`Erro ao analisar reintegração: ${error.message}`)

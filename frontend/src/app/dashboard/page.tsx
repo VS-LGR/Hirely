@@ -55,51 +55,51 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {user.role === 'recruiter' ? (
-            <>
-              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105">
-                <Link href="/dashboard/jobs">
-                  <CardHeader>
-                    <CardTitle>Minhas Vagas</CardTitle>
-                    <CardDescription>Gerencie suas vagas publicadas</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
-                      Ver Vagas
-                    </Button>
-                  </CardContent>
-                </Link>
-              </Card>
-              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105">
-                <Link href="/dashboard/jobs/new">
-                  <CardHeader>
-                    <CardTitle>Criar Nova Vaga</CardTitle>
-                    <CardDescription>Publique uma nova oportunidade</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
-                      Criar Vaga
-                    </Button>
-                  </CardContent>
-                </Link>
-              </Card>
-              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105">
-                <Link href="/dashboard/profile">
-                  <CardHeader>
-                    <CardTitle>Meu Perfil</CardTitle>
-                    <CardDescription>Gerencie suas informações</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button variant="outline" className="w-full border-brown-soft text-brown-dark hover:bg-brown-light transition-all duration-300">
-                      Editar Perfil
-                    </Button>
-                  </CardContent>
-                </Link>
-              </Card>
-            </>
-          ) : (
-            <>
+        {user.role === 'recruiter' ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105">
+              <Link href="/dashboard/jobs">
+                <CardHeader>
+                  <CardTitle>Minhas Vagas</CardTitle>
+                  <CardDescription>Gerencie suas vagas publicadas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
+                    Ver Vagas
+                  </Button>
+                </CardContent>
+              </Link>
+            </Card>
+            <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105">
+              <Link href="/dashboard/jobs/new">
+                <CardHeader>
+                  <CardTitle>Criar Nova Vaga</CardTitle>
+                  <CardDescription>Publique uma nova oportunidade</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
+                    Criar Vaga
+                  </Button>
+                </CardContent>
+              </Link>
+            </Card>
+            <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105">
+              <Link href="/dashboard/profile">
+                <CardHeader>
+                  <CardTitle>Meu Perfil</CardTitle>
+                  <CardDescription>Gerencie suas informações</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="outline" className="w-full border-brown-soft text-brown-dark hover:bg-brown-light transition-all duration-300">
+                    Editar Perfil
+                  </Button>
+                </CardContent>
+              </Link>
+            </Card>
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
               <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105">
                 <Link href="/dashboard/jobs">
                   <CardHeader>
@@ -144,17 +144,26 @@ export default function DashboardPage() {
                   </CardContent>
                 </Link>
               </Card>
-              <Card className="hover:shadow-lg transition-all duration-300 bg-bege-medium">
-                <CardHeader>
-                  <CardTitle className="text-brown-dark">Dica</CardTitle>
-                  <CardDescription className="text-brown-soft">
-                    Complete seu perfil para aumentar suas chances de ser encontrado por recrutadores!
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </>
-          )}
-        </div>
+            </div>
+            <Card className="hover:shadow-lg transition-all duration-300 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-primary/20">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                      <span className="text-2xl">💡</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-brown-dark mb-2">Dica Profissional</h3>
+                    <p className="text-brown-soft">
+                      Complete seu perfil para aumentar suas chances de ser encontrado por recrutadores! Adicione suas habilidades, experiências e formação acadêmica.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         {/* Stats Section (for recruiters) */}
         {user.role === 'recruiter' && (
