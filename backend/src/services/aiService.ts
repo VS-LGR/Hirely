@@ -29,6 +29,28 @@ export interface ResumeAnalysis {
   suggestions: string[]
 }
 
+export interface ReintegrationAnalysis {
+  currentArea: string
+  suggestedAreas: {
+    natural: Array<{
+      title: string
+      description: string
+      reasons: string[]
+    }>
+    adjacent: Array<{
+      title: string
+      description: string
+      reasons: string[]
+    }>
+    strategic: Array<{
+      title: string
+      description: string
+      reasons: string[]
+    }>
+  }
+  recommendedCategories: string[]
+}
+
 export interface AIService {
   generateJobDescription: (title: string, requirements: string[]) => Promise<string>
   analyzeResume: (resume: string) => Promise<any>
@@ -37,6 +59,7 @@ export interface AIService {
   generateMatchScore: (jobDescription: string, candidateProfile: string) => Promise<number>
   suggestTags: (profile: { bio?: string; skills?: string[]; experience?: any[] }) => Promise<Array<{ name: string; category: string }>>
   chatWithAssistant: (message: string, context?: { profile?: any; history?: any[] }) => Promise<string>
+  analyzeReintegration: (currentArea: string, profile?: { bio?: string; experience?: any[]; tags?: any[] }) => Promise<ReintegrationAnalysis>
 }
 
 class AIServiceImpl implements AIService {
@@ -487,6 +510,23 @@ Educação: ${JSON.stringify(context.profile.education || [])}`,
         throw error
       }
       throw new Error('Erro ao processar mensagem')
+    }
+  }
+
+  async analyzeReintegration(
+    currentArea: string,
+    profile?: { bio?: string; experience?: any[]; tags?: any[] }
+  ): Promise<ReintegrationAnalysis> {
+    // Implementação básica - pode ser melhorada
+    // Por enquanto, retorna estrutura vazia se não usar WatsonX
+    return {
+      currentArea,
+      suggestedAreas: {
+        natural: [],
+        adjacent: [],
+        strategic: [],
+      },
+      recommendedCategories: [],
     }
   }
 }

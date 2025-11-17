@@ -1,6 +1,6 @@
 import dotenv from 'dotenv'
 import axios from 'axios'
-import { AIService, ResumeAnalysis } from './aiService'
+import { AIService, ResumeAnalysis, ReintegrationAnalysis } from './aiService'
 import { db } from '../database/connection'
 
 dotenv.config()
@@ -977,6 +977,108 @@ Seja preciso e sugira apenas tags que existem na lista acima.`
         throw new Error(`Erro no WatsonX: ${error.message}`)
       }
       throw new Error('Erro ao processar mensagem')
+    }
+  }
+
+  /**
+   * Analisar reintegração ao mercado de trabalho
+   * Sugere áreas de transição baseadas na área atual do candidato
+   */
+  async analyzeReintegration(
+    currentArea: string,
+    profile?: { bio?: string; experience?: any[]; tags?: any[] }
+  ): Promise<ReintegrationAnalysis> {
+    try {
+      if (!this.apiKey || !this.projectId) {
+        throw new Error('WatsonX não configurado')
+      }
+
+      // Construir contexto do perfil
+      let profileContext = ''
+      if (profile) {
+        if (profile.bio) profileContext += `Biografia: ${profile.bio}\n`
+        if (profile.experience && profile.experience.length > 0) {
+          profileContext += `Experiências: ${profile.experience.map((exp: any) => 
+            `${exp.position || 'Cargo'} na ${exp.company || 'Empresa'}`
+          ).join(', ')}\n`
+        }
+        if (profile.tags && profile.tags.length > 0) {
+          profileContext += `Habilidades: ${profile.tags.map((tag: any) => tag.name || tag).join(', ')}\n`
+        }
+      }
+
+      const systemPrompt = `Você é a Ellie, uma especialista em reintegração ao mercado de trabalho do futuro. 
+Seu foco é ajudar pessoas a encontrarem novas áreas de atuação que sejam relevantes, com baixo risco de obsolescência e que aproveitem suas habilidades existentes.
+
+Analise a área atual do candidato e sugira áreas de transição categorizadas em:
+1. Transição Natural (✔️): Mesma área, menos risco de obsolescência - aproveita quase 100% das habilidades atuais
+2. Transição Adjacente (🟨): Usa habilidades parecidas + skills novos - requer upskilling moderado
+3. Transição Estratégica (🟥): Nova área com grande empregabilidade - mobilidade social real
+
+Para cada área sugerida, forneça:
+- Título da área/cargo
+- Descrição breve
+- Razões específicas (3-5 pontos) de por que essa transição faz sentido
+
+Foque em áreas do mercado de trabalho do futuro, considerando automação, IA e tendências atuais.
+Mantenha-se atualizado com as demandas do mercado brasileiro.
+
+Retorne APENAS um JSON válido no formato:
+{
+  "currentArea": "área atual informada",
+  "suggestedAreas": {
+    "natural": [
+      {
+        "title": "Nome da área/cargo",
+        "description": "Descrição breve",
+        "reasons": ["razão 1", "razão 2", "razão 3"]
+      }
+    ],
+    "adjacent": [...],
+    "strategic": [...]
+  },
+  "recommendedCategories": ["categoria1", "categoria2", ...]
+}`
+
+      const userPrompt = `Área atual de trabalho: ${currentArea}
+
+${profileContext ? `Contexto do candidato:\n${profileContext}` : ''}
+
+Analise e sugira áreas de transição para reintegração ao mercado de trabalho do futuro.`
+
+      // Usar text generation direto para análise estruturada
+      const response = await this.callTextGeneration(
+        systemPrompt + '\n\n' + userPrompt,
+        {
+          max_new_tokens: 2000,
+          temperature: 0.7,
+        },
+        true // forceDirectGeneration
+      )
+
+      // Extrair JSON da resposta
+      let jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        throw new Error('Resposta não contém JSON válido')
+      }
+
+      const analysis = JSON.parse(jsonMatch[0]) as ReintegrationAnalysis
+
+      // Validar estrutura
+      if (!analysis.suggestedAreas || !analysis.recommendedCategories) {
+        throw new Error('Estrutura de resposta inválida')
+      }
+
+      // Garantir que todas as categorias existam
+      analysis.suggestedAreas.natural = analysis.suggestedAreas.natural || []
+      analysis.suggestedAreas.adjacent = analysis.suggestedAreas.adjacent || []
+      analysis.suggestedAreas.strategic = analysis.suggestedAreas.strategic || []
+      analysis.recommendedCategories = analysis.recommendedCategories || []
+
+      return analysis
+    } catch (error: any) {
+      console.error('Erro ao analisar reintegração:', error)
+      throw new Error(`Erro ao analisar reintegração: ${error.message}`)
     }
   }
 }

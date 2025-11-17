@@ -18,8 +18,8 @@ export const searchCourses = async (
     const params: any[] = []
     let paramIndex = 1
 
-    // Filtrar por provider (FIAP ou ALURA)
-    if (provider && (provider === 'FIAP' || provider === 'ALURA')) {
+    // Filtrar por provider (FIAP, ALURA ou IBM)
+    if (provider && (provider === 'FIAP' || provider === 'ALURA' || provider === 'IBM')) {
       query += ` AND provider = $${paramIndex}`
       params.push(provider)
       paramIndex++
@@ -92,7 +92,7 @@ export const listCourses = async (
     const params: any[] = []
     let paramIndex = 1
 
-    if (provider && (provider === 'FIAP' || provider === 'ALURA')) {
+    if (provider && (provider === 'FIAP' || provider === 'ALURA' || provider === 'IBM')) {
       query += ` AND provider = $${paramIndex}`
       params.push(provider)
       paramIndex++

@@ -6,6 +6,7 @@ import { watsonService } from '../services/watsonService'
 import { watsonXService } from '../services/watsonXService'
 import { extractTextFromFile } from '../utils/resumeParser'
 import { uploadFileToSupabase, downloadFileFromSupabase, deleteFileFromSupabase } from '../utils/supabaseStorage'
+import { db } from '../database/connection'
 import fs from 'fs'
 import path from 'path'
 
@@ -297,6 +298,73 @@ export const suggestTagsForProfile = async (
     }
   } catch (error: any) {
     console.error('Error in suggestTagsForProfile:', error)
+    next(error)
+  }
+}
+
+// Analisar reintegração ao mercado de trabalho
+export const analyzeReintegration = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      throw createError('Não autenticado', 401)
+    }
+
+    if (req.user.role !== 'candidate') {
+      throw createError('Apenas candidatos podem solicitar análise de reintegração', 403)
+    }
+
+    const { currentArea } = req.body
+
+    if (!currentArea || typeof currentArea !== 'string' || currentArea.trim().length === 0) {
+      throw createError('Área atual de trabalho é obrigatória', 400)
+    }
+
+    // Buscar perfil do usuário para contexto
+    const profileResult = await db.query(
+      `SELECT u.bio, u.experience, u.education,
+       COALESCE(
+         json_agg(
+           json_build_object('id', t.id, 'name', t.name, 'category', t.category)
+         ) FILTER (WHERE t.id IS NOT NULL),
+         '[]'
+       ) as tags
+       FROM users u
+       LEFT JOIN user_tags ut ON u.id = ut.user_id
+       LEFT JOIN tags t ON ut.tag_id = t.id
+       WHERE u.id = $1
+       GROUP BY u.id`,
+      [req.user.id]
+    )
+
+    const userProfile = profileResult.rows[0] || {}
+
+    try {
+      const service = getAIService()
+      const analysis = await service.analyzeReintegration(currentArea.trim(), {
+        bio: userProfile.bio,
+        experience: userProfile.experience || [],
+        tags: userProfile.tags || [],
+      })
+
+      res.json({
+        success: true,
+        data: {
+          analysis,
+        },
+      })
+    } catch (aiError: any) {
+      console.error('Error in analyzeReintegration:', aiError)
+      throw createError(
+        aiError.message || 'Erro ao analisar reintegração',
+        aiError.statusCode || 500
+      )
+    }
+  } catch (error: any) {
+    console.error('Error in analyzeReintegration controller:', error)
     next(error)
   }
 }

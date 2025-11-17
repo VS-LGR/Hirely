@@ -5,6 +5,7 @@ import {
   suggestImprovements,
   uploadAndAnalyzeResume,
   suggestTagsForProfile,
+  analyzeReintegration,
   chatWithAssistant,
 } from '../controllers/aiController'
 import { authenticate, authorize } from '../middleware/auth'
@@ -57,6 +58,7 @@ aiRoutes.post(
   uploadAndAnalyzeResume
 )
 aiRoutes.post('/suggest-tags', authenticate, authorize('candidate'), suggestTagsForProfile)
+aiRoutes.post('/analyze-reintegration', authenticate, authorize('candidate'), analyzeReintegration)
 aiRoutes.post('/chat', authenticate, authorize('candidate'), chatWithAssistant)
 
 
