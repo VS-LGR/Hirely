@@ -386,11 +386,18 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-bege-light">
       <div className="container mx-auto px-4 py-8">
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="relative flex flex-col lg:flex-row gap-6 transition-all duration-500 ease-in-out">
+          {/* Conteúdo Principal - Centralizado quando assistente fechado */}
+          <div 
+            className={`flex-1 transition-all duration-500 ease-in-out space-y-6 ${
+              showAIAssistant 
+                ? 'lg:max-w-4xl mx-0' 
+                : 'lg:max-w-3xl mx-auto'
+            }`}
+          >
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
                     <CardTitle className="text-3xl">Meu Perfil</CardTitle>
                     <CardDescription>
@@ -400,10 +407,10 @@ export default function ProfilePage() {
                   <Button
                     variant="outline"
                     onClick={() => setShowAIAssistant(!showAIAssistant)}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 transition-all duration-300 hover:scale-105"
                   >
                     <Sparkles className="h-4 w-4" />
-                    Assistente IA
+                    {showAIAssistant ? 'Fechar Assistente' : 'Assistente IA'}
                   </Button>
                 </div>
               </CardHeader>
@@ -731,51 +738,75 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  {/* Pontos Fortes */}
-                  <div className="space-y-4">
-                    <Label className="text-base font-semibold">Pontos Fortes Identificados</Label>
-                    {formData.strengths.length === 0 ? (
-                      <p className="text-sm text-muted-foreground italic">
-                        Nenhum ponto forte identificado ainda. Faça upload do seu currículo para análise automática.
-                      </p>
-                    ) : (
-                      <Card className="bg-bege-medium">
-                        <CardContent className="pt-4">
-                          <ul className="space-y-2">
-                            {formData.strengths.map((strength, index) => (
-                              <li key={index} className="flex items-start gap-2 text-sm text-brown-soft">
-                                <span className="text-primary mt-1">•</span>
-                                <span>{strength}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
+                  {/* Pontos Fortes e Sugestões - Layout em Grid */}
+                  {(formData.strengths.length > 0 || formData.suggestions.length > 0) && (
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {/* Pontos Fortes */}
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold text-brown-dark">
+                          Pontos Fortes Identificados
+                        </Label>
+                        {formData.strengths.length === 0 ? (
+                          <p className="text-sm text-muted-foreground italic">
+                            Nenhum ponto forte identificado ainda.
+                          </p>
+                        ) : (
+                          <Card className="bg-bege-medium border-brown-light">
+                            <CardContent className="pt-4 pb-4">
+                              <ul className="space-y-3">
+                                {formData.strengths.map((strength, index) => (
+                                  <li 
+                                    key={index} 
+                                    className="flex items-start gap-3 text-sm text-brown-soft leading-relaxed"
+                                  >
+                                    <span className="text-primary mt-1.5 flex-shrink-0">✓</span>
+                                    <span className="flex-1">{strength}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
 
-                  {/* Sugestões de Desenvolvimento */}
-                  <div className="space-y-4">
-                    <Label className="text-base font-semibold">Sugestões de Desenvolvimento</Label>
-                    {formData.suggestions.length === 0 ? (
+                      {/* Sugestões de Desenvolvimento */}
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold text-brown-dark">
+                          Sugestões de Desenvolvimento
+                        </Label>
+                        {formData.suggestions.length === 0 ? (
+                          <p className="text-sm text-muted-foreground italic">
+                            Nenhuma sugestão disponível ainda.
+                          </p>
+                        ) : (
+                          <Card className="bg-bege-medium border-brown-light">
+                            <CardContent className="pt-4 pb-4">
+                              <ul className="space-y-3">
+                                {formData.suggestions.map((suggestion, index) => (
+                                  <li 
+                                    key={index} 
+                                    className="flex items-start gap-3 text-sm text-brown-soft leading-relaxed"
+                                  >
+                                    <span className="text-primary mt-1.5 flex-shrink-0">→</span>
+                                    <span className="flex-1">{suggestion}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Mensagem quando não há dados */}
+                  {formData.strengths.length === 0 && formData.suggestions.length === 0 && (
+                    <div className="text-center py-8">
                       <p className="text-sm text-muted-foreground italic">
-                        Nenhuma sugestão disponível ainda. Faça upload do seu currículo para receber sugestões personalizadas.
+                        Faça upload do seu currículo para receber análise automática com pontos fortes e sugestões personalizadas.
                       </p>
-                    ) : (
-                      <Card className="bg-bege-medium">
-                        <CardContent className="pt-4">
-                          <ul className="space-y-2">
-                            {formData.suggestions.map((suggestion, index) => (
-                              <li key={index} className="flex items-start gap-2 text-sm text-brown-soft">
-                                <span className="text-primary mt-1">•</span>
-                                <span>{suggestion}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   <div className="flex gap-4">
                     <Button type="submit" disabled={updateMutation.isPending}>
@@ -798,14 +829,25 @@ export default function ProfilePage() {
               </form>
             </Card>
 
-            <ResumeUpload onAnalysisComplete={handleResumeAnalysis} />
+            <div className="space-y-6">
+              <ResumeUpload onAnalysisComplete={handleResumeAnalysis} />
+            </div>
           </div>
 
-          {showAIAssistant && (
-            <div className="lg:col-span-1">
-              <AIAssistant />
-            </div>
-          )}
+          {/* Assistente IA - Aparece com animação */}
+          <div 
+            className={`transition-all duration-500 ease-in-out ${
+              showAIAssistant 
+                ? 'lg:w-96 w-full opacity-100 translate-x-0' 
+                : 'lg:w-0 w-0 opacity-0 lg:translate-x-8 translate-y-4 overflow-hidden'
+            }`}
+          >
+            {showAIAssistant && (
+              <div className="lg:sticky lg:top-8">
+                <AIAssistant />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
