@@ -24,7 +24,7 @@ interface ResumeAnalysis {
     position: string | null
     startDate: string
     endDate?: string | null
-    description?: string
+    description?: string | null
   }>
   education: Array<{
     institution: string
