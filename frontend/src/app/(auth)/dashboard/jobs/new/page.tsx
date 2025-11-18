@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { TagsInput } from '@/components/ui/tags-input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tag } from '@/types'
 import api from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import { Sparkles } from 'lucide-react'
 
 export default function NewJobPage() {
   const router = useRouter()
@@ -19,6 +21,9 @@ export default function NewJobPage() {
   const user = useAuthStore((state) => state.user)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showAIDialog, setShowAIDialog] = useState(false)
+  const [aiRequirements, setAiRequirements] = useState('')
+  const [generatingAI, setGeneratingAI] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -30,6 +35,36 @@ export default function NewJobPage() {
     remote: false,
     tags: [] as Tag[],
   })
+
+  const handleGenerateWithAI = async () => {
+    if (!aiRequirements.trim()) {
+      setError('Descreva os requisitos da vaga para gerar com IA')
+      return
+    }
+
+    setGeneratingAI(true)
+    setError('')
+
+    try {
+      const response = await api.post('/ai/generate-job', {
+        requirements: aiRequirements.trim(),
+      })
+
+      const jobData = response.data.data.job
+      setFormData({
+        ...formData,
+        title: jobData.title || formData.title,
+        description: jobData.description || formData.description,
+        requirements: jobData.requirements || formData.requirements,
+      })
+      setShowAIDialog(false)
+      setAiRequirements('')
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Erro ao gerar vaga com IA')
+    } finally {
+      setGeneratingAI(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -80,10 +115,23 @@ export default function NewJobPage() {
       <div className="container mx-auto px-4 py-8">
         <Card className="max-w-3xl mx-auto">
           <CardHeader>
-            <CardTitle className="text-3xl">Criar Nova Vaga</CardTitle>
-            <CardDescription>
-              Preencha os dados da vaga para publicar
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-3xl">Criar Nova Vaga</CardTitle>
+                <CardDescription>
+                  Preencha os dados da vaga para publicar
+                </CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAIDialog(true)}
+                className="flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                Gerar com IA
+              </Button>
+            </div>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-6">
@@ -215,6 +263,56 @@ export default function NewJobPage() {
             </CardContent>
           </form>
         </Card>
+
+        <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                Gerar Vaga com IA
+              </DialogTitle>
+              <DialogDescription>
+                Descreva os requisitos da vaga e a IA irá gerar título, descrição e requisitos completos.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {error && (
+                <div className="p-3 rounded-md bg-error/10 text-error text-sm">
+                  {error}
+                </div>
+              )}
+
+              <div>
+                <Label htmlFor="ai-requirements">Requisitos da Vaga</Label>
+                <Textarea
+                  id="ai-requirements"
+                  value={aiRequirements}
+                  onChange={(e) => setAiRequirements(e.target.value)}
+                  placeholder="Ex: Precisamos de um desenvolvedor Full Stack com experiência em React e Node.js. A vaga é remota, oferece benefícios como plano de saúde e vale refeição. Buscamos alguém com pelo menos 3 anos de experiência..."
+                  className="min-h-[200px] mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Seja específico sobre tecnologias, experiência necessária, modalidade de trabalho e benefícios.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAIDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleGenerateWithAI}
+                disabled={generatingAI || !aiRequirements.trim()}
+                className="flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                {generatingAI ? 'Gerando...' : 'Gerar Vaga'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

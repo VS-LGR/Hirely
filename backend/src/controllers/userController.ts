@@ -14,7 +14,8 @@ export const getUserProfile = async (
     }
 
     const result = await db.query(
-      `SELECT u.id, u.email, u.name, u.role, u.bio, u.skills, u.experience, u.education, u.strengths, u.suggestions, u.created_at,
+      `SELECT u.id, u.email, u.name, u.role, u.bio, u.skills, u.experience, u.education, u.strengths, u.suggestions, 
+       u.company, u.industry, u.website, u.location, u.company_size, u.company_description, u.created_at,
        COALESCE(
          json_agg(
            json_build_object('id', t.id, 'name', t.name, 'category', t.category)
@@ -57,7 +58,23 @@ export const updateUserProfile = async (
       throw createError('Não autenticado', 401)
     }
 
-    const { name, bio, skills, experience, education, strengths, suggestions, tag_ids } = req.body
+    const { 
+      name, 
+      bio, 
+      skills, 
+      experience, 
+      education, 
+      strengths, 
+      suggestions, 
+      tag_ids,
+      // Campos específicos de recrutador
+      company,
+      industry,
+      website,
+      location,
+      company_size,
+      company_description
+    } = req.body
 
     // Validar e limpar dados JSONB antes de inserir
     // Garantir que arrays sejam sempre arrays válidos (não undefined)
@@ -80,10 +97,32 @@ export const updateUserProfile = async (
           education = $5::jsonb,
           strengths = $6::jsonb,
           suggestions = $7::jsonb,
+          company = COALESCE($8, company),
+          industry = COALESCE($9, industry),
+          website = COALESCE($10, website),
+          location = COALESCE($11, location),
+          company_size = COALESCE($12, company_size),
+          company_description = COALESCE($13, company_description),
           updated_at = NOW()
-        WHERE id = $8
-        RETURNING id, email, name, role, bio, skills, experience, education, strengths, suggestions, created_at`,
-        [name || null, bio || null, cleanSkills, cleanExperience, cleanEducation, cleanStrengths, cleanSuggestions, req.user.id]
+        WHERE id = $14
+        RETURNING id, email, name, role, bio, skills, experience, education, strengths, suggestions, 
+        company, industry, website, location, company_size, company_description, created_at`,
+        [
+          name || null, 
+          bio || null, 
+          cleanSkills, 
+          cleanExperience, 
+          cleanEducation, 
+          cleanStrengths, 
+          cleanSuggestions,
+          company || null,
+          industry || null,
+          website || null,
+          location || null,
+          company_size || null,
+          company_description || null,
+          req.user.id
+        ]
       )
 
       // Atualizar tags se fornecidas
@@ -106,7 +145,8 @@ export const updateUserProfile = async (
 
       // Buscar usuário com tags atualizadas
       const userWithTags = await db.query(
-        `SELECT u.id, u.email, u.name, u.role, u.bio, u.skills, u.experience, u.education, u.strengths, u.suggestions, u.created_at,
+        `SELECT u.id, u.email, u.name, u.role, u.bio, u.skills, u.experience, u.education, u.strengths, u.suggestions, 
+         u.company, u.industry, u.website, u.location, u.company_size, u.company_description, u.created_at,
          COALESCE(
            json_agg(
              json_build_object('id', t.id, 'name', t.name, 'category', t.category)

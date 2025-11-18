@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label'
 import api from '@/lib/api'
 import { Job, Tag, Application } from '@/types'
 import { useAuthStore } from '@/store/authStore'
+import Link from 'next/link'
+import { User } from 'lucide-react'
 
 export default function JobDetailPage() {
   const params = useParams()
@@ -166,6 +168,27 @@ export default function JobDetailPage() {
                 <p className="text-brown-soft whitespace-pre-line">
                   {job.requirements}
                 </p>
+              </div>
+            )}
+
+            {user?.role === 'candidate' && job.recruiter_id && (
+              <div className="p-4 rounded-md bg-bege-medium border border-brown-light">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-brown-dark mb-1">
+                      Sobre o Recrutador
+                    </h3>
+                    <p className="text-sm text-brown-soft">
+                      Conheça mais sobre a empresa e o recrutador desta vaga
+                    </p>
+                  </div>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/recruiter/${job.recruiter_id}`}>
+                      <User className="h-4 w-4 mr-2" />
+                      Ver Perfil
+                    </Link>
+                  </Button>
+                </div>
               </div>
             )}
 

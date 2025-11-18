@@ -6,9 +6,11 @@ import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { FeedbackDialog } from '@/components/recruiter/FeedbackDialog'
+import { Badge } from '@/components/ui/badge'
 import api from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { Tag } from '@/types'
+import { TrendingUp, BarChart3 } from 'lucide-react'
 
 interface Application {
   id: number
@@ -118,35 +120,55 @@ export default function JobApplicationsPage() {
 
         {applications && applications.length > 0 ? (
           <div className="space-y-4">
-            {applications.map((application) => (
-              <Card key={application.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-2xl">{application.candidate.name}</CardTitle>
-                      <CardDescription className="mt-1">
-                        {application.candidate.email}
-                      </CardDescription>
+            {applications.map((application) => {
+              const score = application.match_score || 0
+              const getScoreColor = () => {
+                if (score >= 80) return 'bg-success text-success-foreground'
+                if (score >= 60) return 'bg-info text-info-foreground'
+                if (score >= 40) return 'bg-warning text-warning-foreground'
+                return 'bg-error/20 text-error'
+              }
+
+              return (
+                <Card key={application.id} className="relative">
+                  {score >= 80 && (
+                    <div className="absolute top-4 right-4">
+                      <Badge variant="outline" className="bg-success/10 text-success border-success">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        Top Match
+                      </Badge>
                     </div>
-                    <div className="flex items-center gap-3">
-                      {application.match_score && (
-                        <div className="text-right">
-                          <p className="text-xs text-brown-soft">Compatibilidade</p>
-                          <p className="text-lg font-bold text-primary">
-                            {application.match_score}%
-                          </p>
-                        </div>
-                      )}
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          application.status
-                        )}`}
-                      >
-                        {getStatusLabel(application.status)}
-                      </span>
+                  )}
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-2xl">{application.candidate.name}</CardTitle>
+                        <CardDescription className="mt-1">
+                          {application.candidate.email}
+                        </CardDescription>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {application.match_score !== null && (
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 mb-1">
+                              <BarChart3 className="h-3 w-3 text-brown-soft" />
+                              <p className="text-xs text-brown-soft">Compatibilidade</p>
+                            </div>
+                            <Badge className={`${getScoreColor()} text-base font-bold px-3 py-1`}>
+                              {application.match_score.toFixed(0)}%
+                            </Badge>
+                          </div>
+                        )}
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                            application.status
+                          )}`}
+                        >
+                          {getStatusLabel(application.status)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
                 <CardContent className="space-y-4">
                   {application.candidate.bio && (
                     <div>
@@ -268,7 +290,8 @@ export default function JobApplicationsPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            )
+            })}
           </div>
         ) : (
           <Card>

@@ -37,6 +37,20 @@ export function Header() {
                     Dashboard
                   </Button>
                 </Link>
+                {user?.role === 'recruiter' && (
+                  <Link href="/dashboard/recruiter-profile">
+                    <Button variant="ghost" className="text-brown-dark hover:text-brown-medium hover:bg-bege-medium">
+                      Meu Perfil
+                    </Button>
+                  </Link>
+                )}
+                {user?.role === 'candidate' && (
+                  <Link href="/dashboard/profile">
+                    <Button variant="ghost" className="text-brown-dark hover:text-brown-medium hover:bg-bege-medium">
+                      Meu Perfil
+                    </Button>
+                  </Link>
+                )}
                 {user && (
                   <span className="text-sm text-brown-medium font-medium hidden sm:inline">
                     {user.name}

@@ -84,13 +84,13 @@ export default function DashboardPage() {
               </Link>
             </Card>
             <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105">
-              <Link href="/dashboard/profile">
+              <Link href="/dashboard/recruiter-profile">
                 <CardHeader>
                   <CardTitle>Meu Perfil</CardTitle>
-                  <CardDescription>Gerencie suas informações</CardDescription>
+                  <CardDescription>Complete seu perfil de recrutador</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button variant="outline" className="w-full border-brown-soft text-brown-dark hover:bg-brown-light transition-all duration-300">
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
                     Editar Perfil
                   </Button>
                 </CardContent>

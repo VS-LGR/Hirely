@@ -19,6 +19,13 @@ export interface User {
   education?: Education[]
   strengths?: string[]
   suggestions?: string[]
+  // Campos específicos de recrutador
+  company?: string
+  industry?: string
+  website?: string
+  location?: string
+  company_size?: string
+  company_description?: string
   created_at: string
 }
 
