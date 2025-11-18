@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import api from '@/lib/api'
-import { TrendingUp } from 'lucide-react'
+import { TrendingUp, Heart } from 'lucide-react'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -140,6 +140,24 @@ export default function DashboardPage() {
                   <CardContent>
                     <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
                       Explorar
+                    </Button>
+                  </CardContent>
+                </Link>
+              </Card>
+              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105 bg-gradient-to-br from-pink-50 to-rose-50 border-pink-200">
+                <Link href="/dashboard/mental-health">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Heart className="h-5 w-5 text-pink-600" />
+                      Saúde Mental
+                    </CardTitle>
+                    <CardDescription>
+                      Dicas para organizar suas ideias e profissionais afiliados com preços acessíveis
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button className="w-full bg-pink-600 hover:bg-pink-700 text-white transition-all duration-300">
+                      Acessar
                     </Button>
                   </CardContent>
                 </Link>
