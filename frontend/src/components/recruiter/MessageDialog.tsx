@@ -137,7 +137,7 @@ export function MessageDialog({
                  'Erro desconhecido'}
               </p>
               <p className="text-xs text-brown-soft">
-                Se o erro mencionar "tabela não encontrada", execute a migration create_messages_table.sql no Supabase.
+                Se o erro mencionar &quot;tabela não encontrada&quot;, execute a migration create_messages_table.sql no Supabase.
               </p>
             </div>
           ) : messages && messages.length > 0 ? (
