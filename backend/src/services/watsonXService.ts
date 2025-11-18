@@ -1150,6 +1150,141 @@ Analise e sugira áreas de transição para reintegração ao mercado de trabalh
       throw new Error(`Erro ao analisar reintegração: ${error.message}`)
     }
   }
+
+  async generateJobWithAI(requirements: string): Promise<{ title: string; description: string; requirements: string }> {
+    const prompt = `Com base nas seguintes requisições do recrutador, crie uma vaga de trabalho completa e profissional:
+
+REQUISIÇÕES:
+${requirements}
+
+Crie:
+1. Um título de vaga profissional e atrativo
+2. Uma descrição completa e detalhada da vaga (incluindo responsabilidades, contexto da empresa, benefícios)
+3. Uma lista de requisitos técnicos e comportamentais
+
+Retorne APENAS um JSON válido no formato:
+{
+  "title": "Título da Vaga",
+  "description": "Descrição completa da vaga...",
+  "requirements": "Lista de requisitos formatada..."
+}
+
+IMPORTANTE: Retorne APENAS o JSON, sem texto adicional.`
+
+    try {
+      const response = await this.callTextGeneration(prompt, {
+        max_new_tokens: 1500,
+        temperature: 0.7,
+      })
+
+      // Extrair JSON da resposta
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0])
+        return {
+          title: parsed.title || '',
+          description: parsed.description || '',
+          requirements: parsed.requirements || '',
+        }
+      }
+
+      throw new Error('Resposta não contém JSON válido')
+    } catch (error: any) {
+      console.error('Erro ao gerar vaga com IA:', error)
+      throw new Error(`Erro ao gerar vaga com IA: ${error.message}`)
+    }
+  }
+
+  async generatePersonalizedFeedback(
+    jobDescription: string,
+    candidateProfile: string,
+    bulletPoints: string[]
+  ): Promise<string> {
+    const prompt = `Você é um recrutador experiente. Crie um feedback construtivo e personalizado para um candidato que não foi selecionado.
+
+DESCRIÇÃO DA VAGA:
+${jobDescription}
+
+PERFIL DO CANDIDATO:
+${candidateProfile}
+
+PONTOS ESPECÍFICOS DO RECRUTADOR:
+${bulletPoints.map((bp, i) => `${i + 1}. ${bp}`).join('\n')}
+
+Crie um feedback que:
+- Seja empático e respeitoso
+- Destaque os pontos positivos do candidato
+- Explique de forma construtiva as áreas de melhoria
+- Inclua os pontos específicos mencionados pelo recrutador
+- Seja específico e acionável
+- Termine de forma encorajadora
+
+O feedback deve ter entre 3-5 parágrafos e estar em português brasileiro.`
+
+    return await this.callTextGeneration(prompt, {
+      max_new_tokens: 800,
+      temperature: 0.7,
+    })
+  }
+
+  async calculateAdvancedMatchScore(
+    job: { title: string; description: string; requirements?: string; tags?: any[] },
+    candidate: { bio?: string; skills?: string[]; experience?: any[]; education?: any[]; tags?: any[] }
+  ): Promise<{ score: number; reasons: string[] }> {
+    const jobTags = job.tags?.map((t: any) => t.name).join(', ') || ''
+    const candidateTags = candidate.tags?.map((t: any) => t.name).join(', ') || ''
+    const candidateSkills = candidate.skills?.join(', ') || ''
+
+    const prompt = `Analise a compatibilidade entre esta vaga e este candidato:
+
+VAGA:
+Título: ${job.title}
+Descrição: ${job.description}
+Requisitos: ${job.requirements || 'Não especificados'}
+Tags/Habilidades: ${jobTags}
+
+CANDIDATO:
+Bio: ${candidate.bio || 'Não informado'}
+Habilidades: ${candidateSkills}
+Tags: ${candidateTags}
+Experiência: ${JSON.stringify(candidate.experience || [])}
+Educação: ${JSON.stringify(candidate.education || [])}
+
+Retorne APENAS um JSON válido:
+{
+  "score": 85,
+  "reasons": [
+    "Razão 1 da compatibilidade",
+    "Razão 2 da compatibilidade",
+    "Área de melhoria 1",
+    "Área de melhoria 2"
+  ]
+}
+
+O score deve ser de 0 a 100. Inclua 2-3 razões positivas e 1-2 áreas de melhoria.`
+
+    try {
+      const response = await this.callTextGeneration(prompt, {
+        max_new_tokens: 500,
+        temperature: 0.3,
+      })
+
+      // Extrair JSON da resposta
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0])
+        return {
+          score: Math.min(100, Math.max(0, parsed.score || 50)),
+          reasons: parsed.reasons || [],
+        }
+      }
+
+      return { score: 50, reasons: ['Erro ao processar análise'] }
+    } catch (error: any) {
+      console.error('Erro ao calcular score avançado:', error)
+      return { score: 50, reasons: ['Erro ao calcular compatibilidade'] }
+    }
+  }
 }
 
 export const watsonXService = new WatsonXServiceImpl()

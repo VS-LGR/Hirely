@@ -826,6 +826,25 @@ ${availableTags.length > 0
   async generateMatchScore(jobDescription: string, candidateProfile: string): Promise<number> {
     throw new Error('generateMatchScore não é suportado pelo Watson Assistant. Use WatsonX ou OpenAI.')
   }
+
+  async generateJobWithAI(requirements: string): Promise<{ title: string; description: string; requirements: string }> {
+    throw new Error('generateJobWithAI não é suportado pelo Watson Assistant. Use WatsonX ou OpenAI.')
+  }
+
+  async generatePersonalizedFeedback(
+    jobDescription: string,
+    candidateProfile: string,
+    bulletPoints: string[]
+  ): Promise<string> {
+    throw new Error('generatePersonalizedFeedback não é suportado pelo Watson Assistant. Use WatsonX ou OpenAI.')
+  }
+
+  async calculateAdvancedMatchScore(
+    job: { title: string; description: string; requirements?: string; tags?: any[] },
+    candidate: { bio?: string; skills?: string[]; experience?: any[]; education?: any[]; tags?: any[] }
+  ): Promise<{ score: number; reasons: string[] }> {
+    throw new Error('calculateAdvancedMatchScore não é suportado pelo Watson Assistant. Use WatsonX ou OpenAI.')
+  }
 }
 
 export const watsonService = new WatsonServiceImpl()

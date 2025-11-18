@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { FeedbackDialog } from '@/components/recruiter/FeedbackDialog'
 import api from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { Tag } from '@/types'
@@ -32,6 +34,8 @@ export default function JobApplicationsPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const jobId = params.id as string
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false)
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null)
 
   const { data: applications, isLoading } = useQuery<Application[]>({
     queryKey: ['job-applications', jobId],
@@ -43,14 +47,25 @@ export default function JobApplicationsPage() {
   })
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ applicationId, status }: { applicationId: number; status: string }) => {
-      const response = await api.put(`/applications/${applicationId}/status`, { status })
+    mutationFn: async ({ applicationId, status, feedback }: { applicationId: number; status: string; feedback?: string }) => {
+      const response = await api.put(`/applications/${applicationId}/status`, { status, feedback })
       return response.data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['job-applications', jobId] })
     },
   })
+
+  const handleRejectClick = (application: Application) => {
+    setSelectedApplication(application)
+    setFeedbackDialogOpen(true)
+  }
+
+  const handleFeedbackSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['job-applications', jobId] })
+    setFeedbackDialogOpen(false)
+    setSelectedApplication(null)
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -204,12 +219,7 @@ export default function JobApplicationsPage() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() =>
-                            updateStatusMutation.mutate({
-                              applicationId: application.id,
-                              status: 'rejected',
-                            })
-                          }
+                          onClick={() => handleRejectClick(application)}
                           disabled={updateStatusMutation.isPending}
                         >
                           Rejeitar
@@ -233,12 +243,7 @@ export default function JobApplicationsPage() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() =>
-                            updateStatusMutation.mutate({
-                              applicationId: application.id,
-                              status: 'rejected',
-                            })
-                          }
+                          onClick={() => handleRejectClick(application)}
                           disabled={updateStatusMutation.isPending}
                         >
                           Rejeitar
@@ -246,9 +251,19 @@ export default function JobApplicationsPage() {
                       </>
                     )}
                     {(application.status === 'accepted' || application.status === 'rejected') && (
-                      <p className="text-sm text-brown-soft">
-                        Candidatura {getStatusLabel(application.status).toLowerCase()}
-                      </p>
+                      <div className="space-y-2">
+                        <p className="text-sm text-brown-soft">
+                          Candidatura {getStatusLabel(application.status).toLowerCase()}
+                        </p>
+                        {application.status === 'rejected' && (application as any).feedback && (
+                          <div className="p-3 rounded-md bg-bege-medium border border-brown-light">
+                            <p className="text-xs font-semibold text-brown-dark mb-1">Feedback:</p>
+                            <p className="text-sm text-brown-soft whitespace-pre-line">
+                              {(application as any).feedback}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </CardContent>
@@ -263,6 +278,18 @@ export default function JobApplicationsPage() {
               </p>
             </CardContent>
           </Card>
+        )}
+
+        {selectedApplication && (
+          <FeedbackDialog
+            open={feedbackDialogOpen}
+            onOpenChange={setFeedbackDialogOpen}
+            applicationId={selectedApplication.id}
+            jobId={Number(jobId)}
+            candidateId={selectedApplication.candidate_id}
+            candidateName={selectedApplication.candidate.name}
+            onSuccess={handleFeedbackSuccess}
+          />
         )}
       </div>
     </div>

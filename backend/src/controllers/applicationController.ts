@@ -298,10 +298,15 @@ export const updateApplicationStatus = async (
     }
 
     const { id } = req.params
-    const { status } = req.body
+    const { status, feedback } = req.body
 
     if (!status || !['pending', 'reviewed', 'accepted', 'rejected'].includes(status)) {
       throw createError('Status inválido', 400)
+    }
+
+    // Se for rejeitar, feedback é obrigatório
+    if (status === 'rejected' && (!feedback || typeof feedback !== 'string' || feedback.trim().length === 0)) {
+      throw createError('Feedback é obrigatório ao rejeitar um candidato', 400)
     }
 
     // Verificar se a candidatura existe e se a vaga pertence ao recrutador
@@ -324,13 +329,15 @@ export const updateApplicationStatus = async (
       throw createError('Acesso negado', 403)
     }
 
-    // Atualizar status
+    // Atualizar status e feedback (se fornecido)
     const result = await db.query(
       `UPDATE applications 
-       SET status = $1, updated_at = NOW()
-       WHERE id = $2
+       SET status = $1, 
+           feedback = CASE WHEN $2 IS NOT NULL THEN $2 ELSE feedback END,
+           updated_at = NOW()
+       WHERE id = $3
        RETURNING *`,
-      [status, id]
+      [status, status === 'rejected' ? feedback.trim() : null, id]
     )
 
     res.json({

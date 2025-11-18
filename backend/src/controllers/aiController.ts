@@ -470,3 +470,243 @@ export const chatWithAssistant = async (
   }
 }
 
+// Gerar vaga completa com IA baseado em requisições do recrutador
+export const generateJobWithAI = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user || req.user.role !== 'recruiter') {
+      throw createError('Apenas recrutadores podem gerar vagas com IA', 403)
+    }
+
+    const { requirements } = req.body
+
+    if (!requirements || typeof requirements !== 'string' || requirements.trim().length === 0) {
+      throw createError('Requisitos são obrigatórios', 400)
+    }
+
+    const service = getAIService()
+    const jobData = await service.generateJobWithAI(requirements.trim())
+
+    res.json({
+      success: true,
+      data: {
+        job: jobData,
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// Gerar feedback personalizado para candidato rejeitado
+export const generatePersonalizedFeedback = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user || (req.user.role !== 'recruiter' && req.user.role !== 'admin')) {
+      throw createError('Acesso negado', 403)
+    }
+
+    const { job_id, candidate_id, bullet_points } = req.body
+
+    if (!job_id || !candidate_id) {
+      throw createError('ID da vaga e do candidato são obrigatórios', 400)
+    }
+
+    if (!bullet_points || !Array.isArray(bullet_points) || bullet_points.length === 0) {
+      throw createError('Pelo menos um ponto de feedback é obrigatório', 400)
+    }
+
+    // Buscar informações da vaga
+    const jobResult = await db.query(
+      `SELECT j.*, 
+        COALESCE(
+          json_agg(
+            json_build_object('id', t.id, 'name', t.name, 'category', t.category)
+          ) FILTER (WHERE t.id IS NOT NULL),
+          '[]'::json
+        ) as tags
+      FROM jobs j
+      LEFT JOIN job_tags jt ON j.id = jt.job_id
+      LEFT JOIN tags t ON jt.tag_id = t.id
+      WHERE j.id = $1
+      GROUP BY j.id`,
+      [job_id]
+    )
+
+    if (jobResult.rows.length === 0) {
+      throw createError('Vaga não encontrada', 404)
+    }
+
+    const job = jobResult.rows[0]
+
+    // Verificar se a vaga pertence ao recrutador
+    if (Number(job.recruiter_id) !== Number(req.user.id) && req.user.role !== 'admin') {
+      throw createError('Acesso negado', 403)
+    }
+
+    // Buscar informações do candidato
+    const candidateResult = await db.query(
+      `SELECT u.*,
+        COALESCE(
+          json_agg(
+            json_build_object('id', t.id, 'name', t.name, 'category', t.category)
+          ) FILTER (WHERE t.id IS NOT NULL),
+          '[]'::json
+        ) as tags
+      FROM users u
+      LEFT JOIN user_tags ut ON u.id = ut.user_id
+      LEFT JOIN tags t ON ut.tag_id = t.id
+      WHERE u.id = $1
+      GROUP BY u.id`,
+      [candidate_id]
+    )
+
+    if (candidateResult.rows.length === 0) {
+      throw createError('Candidato não encontrado', 404)
+    }
+
+    const candidate = candidateResult.rows[0]
+
+    // Construir perfil do candidato
+    const candidateProfile = `
+Nome: ${candidate.name}
+Bio: ${candidate.bio || 'Não informado'}
+Habilidades: ${Array.isArray(candidate.skills) ? candidate.skills.join(', ') : 'Não informado'}
+Experiência: ${JSON.stringify(candidate.experience || [])}
+Educação: ${JSON.stringify(candidate.education || [])}
+Tags: ${Array.isArray(candidate.tags) ? candidate.tags.map((t: any) => t.name).join(', ') : 'Nenhuma'}
+`
+
+    // Construir descrição da vaga
+    const jobDescription = `
+Título: ${job.title}
+Descrição: ${job.description}
+Requisitos: ${job.requirements || 'Não especificados'}
+`
+
+    const service = getAIService()
+    const feedback = await service.generatePersonalizedFeedback(
+      jobDescription,
+      candidateProfile,
+      bullet_points
+    )
+
+    res.json({
+      success: true,
+      data: {
+        feedback,
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// Calcular score avançado de compatibilidade
+export const calculateAdvancedMatchScore = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user || (req.user.role !== 'recruiter' && req.user.role !== 'admin')) {
+      throw createError('Acesso negado', 403)
+    }
+
+    const { job_id, candidate_id } = req.body
+
+    if (!job_id || !candidate_id) {
+      throw createError('ID da vaga e do candidato são obrigatórios', 400)
+    }
+
+    // Buscar informações da vaga
+    const jobResult = await db.query(
+      `SELECT j.*, 
+        COALESCE(
+          json_agg(
+            json_build_object('id', t.id, 'name', t.name, 'category', t.category)
+          ) FILTER (WHERE t.id IS NOT NULL),
+          '[]'::json
+        ) as tags
+      FROM jobs j
+      LEFT JOIN job_tags jt ON j.id = jt.job_id
+      LEFT JOIN tags t ON jt.tag_id = t.id
+      WHERE j.id = $1
+      GROUP BY j.id`,
+      [job_id]
+    )
+
+    if (jobResult.rows.length === 0) {
+      throw createError('Vaga não encontrada', 404)
+    }
+
+    const job = jobResult.rows[0]
+
+    // Buscar informações do candidato
+    const candidateResult = await db.query(
+      `SELECT u.*,
+        COALESCE(
+          json_agg(
+            json_build_object('id', t.id, 'name', t.name, 'category', t.category)
+          ) FILTER (WHERE t.id IS NOT NULL),
+          '[]'::json
+        ) as tags
+      FROM users u
+      LEFT JOIN user_tags ut ON u.id = ut.user_id
+      LEFT JOIN tags t ON ut.tag_id = t.id
+      WHERE u.id = $1
+      GROUP BY u.id`,
+      [candidate_id]
+    )
+
+    if (candidateResult.rows.length === 0) {
+      throw createError('Candidato não encontrado', 404)
+    }
+
+    const candidate = candidateResult.rows[0]
+
+    // Processar tags
+    let jobTags = []
+    let candidateTags = []
+    try {
+      jobTags = Array.isArray(job.tags) ? job.tags : (job.tags ? JSON.parse(job.tags) : [])
+      candidateTags = Array.isArray(candidate.tags) ? candidate.tags : (candidate.tags ? JSON.parse(candidate.tags) : [])
+    } catch (e) {
+      console.error('Error parsing tags:', e)
+    }
+
+    const service = getAIService()
+    const result = await service.calculateAdvancedMatchScore(
+      {
+        title: job.title,
+        description: job.description,
+        requirements: job.requirements || '',
+        tags: jobTags,
+      },
+      {
+        bio: candidate.bio || '',
+        skills: Array.isArray(candidate.skills) ? candidate.skills : [],
+        experience: Array.isArray(candidate.experience) ? candidate.experience : [],
+        education: Array.isArray(candidate.education) ? candidate.education : [],
+        tags: candidateTags,
+      }
+    )
+
+    res.json({
+      success: true,
+      data: {
+        matchScore: result.score,
+        reasons: result.reasons,
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+

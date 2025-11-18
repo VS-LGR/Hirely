@@ -18,11 +18,11 @@ export function AnimatedBackground() {
     // Criar bolhas iniciais
     const createBubble = (id: number, delay: number = 0): Bubble => ({
       id,
-      size: Math.random() * 120 + 60, // 60-180px
+      size: Math.random() * 150 + 80, // 80-230px
       left: Math.random() * 100, // 0-100%
       duration: Math.random() * 25 + 20, // 20-45s
       delay,
-      opacity: Math.random() * 0.25 + 0.05, // 0.05-0.3
+      opacity: Math.random() * 0.4 + 0.15, // 0.15-0.55 (mais visível)
     })
 
     const initialBubbles: Bubble[] = Array.from({ length: 10 }, (_, i) =>
@@ -58,7 +58,7 @@ export function AnimatedBackground() {
       {bubbles.map((bubble) => (
         <div
           key={bubble.id}
-          className="bubble-float absolute rounded-full bg-primary/8 blur-2xl"
+          className="bubble-float absolute rounded-full bg-primary/12 blur-2xl"
           style={{
             width: `${bubble.size}px`,
             height: `${bubble.size}px`,

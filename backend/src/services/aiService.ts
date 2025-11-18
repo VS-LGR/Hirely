@@ -53,10 +53,13 @@ export interface ReintegrationAnalysis {
 
 export interface AIService {
   generateJobDescription: (title: string, requirements: string[]) => Promise<string>
+  generateJobWithAI: (requirements: string) => Promise<{ title: string; description: string; requirements: string }>
   analyzeResume: (resume: string) => Promise<any>
   analyzeResumeDetailed: (resumeText: string) => Promise<ResumeAnalysis>
   suggestImprovements: (text: string, type: 'resume' | 'cover_letter') => Promise<string>
   generateMatchScore: (jobDescription: string, candidateProfile: string) => Promise<number>
+  generatePersonalizedFeedback: (jobDescription: string, candidateProfile: string, bulletPoints: string[]) => Promise<string>
+  calculateAdvancedMatchScore: (job: { title: string; description: string; requirements?: string; tags?: any[] }, candidate: { bio?: string; skills?: string[]; experience?: any[]; education?: any[]; tags?: any[] }) => Promise<{ score: number; reasons: string[] }>
   suggestTags: (profile: { bio?: string; skills?: string[]; experience?: any[] }) => Promise<Array<{ name: string; category: string }>>
   chatWithAssistant: (message: string, context?: { profile?: any; history?: any[] }) => Promise<string>
   analyzeReintegration: (currentArea: string, profile?: { bio?: string; experience?: any[]; tags?: any[] }) => Promise<ReintegrationAnalysis>
@@ -527,6 +530,194 @@ Educação: ${JSON.stringify(context.profile.education || [])}`,
         strategic: [],
       },
       recommendedCategories: [],
+    }
+  }
+
+  async generateJobWithAI(requirements: string): Promise<{ title: string; description: string; requirements: string }> {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OpenAI API key não configurada')
+      }
+
+      const prompt = `Com base nas seguintes requisições do recrutador, crie uma vaga de trabalho completa e profissional:
+
+REQUISIÇÕES:
+${requirements}
+
+Crie:
+1. Um título de vaga profissional e atrativo
+2. Uma descrição completa e detalhada da vaga (incluindo responsabilidades, contexto da empresa, benefícios)
+3. Uma lista de requisitos técnicos e comportamentais
+
+Retorne APENAS um JSON válido no formato:
+{
+  "title": "Título da Vaga",
+  "description": "Descrição completa da vaga...",
+  "requirements": "Lista de requisitos formatada..."
+}
+
+IMPORTANTE: Retorne APENAS o JSON, sem texto adicional.`
+
+      const completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um especialista em recrutamento. Crie vagas profissionais e atrativas. Sempre retorne APENAS JSON válido.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 1500,
+      })
+
+      let content = completion.choices[0]?.message?.content || '{}'
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        content = jsonMatch[0]
+      }
+
+      const parsed = JSON.parse(content)
+      return {
+        title: parsed.title || '',
+        description: parsed.description || '',
+        requirements: parsed.requirements || '',
+      }
+    } catch (error: any) {
+      console.error('Error generating job with AI:', error)
+      throw new Error('Erro ao gerar vaga com IA')
+    }
+  }
+
+  async generatePersonalizedFeedback(
+    jobDescription: string,
+    candidateProfile: string,
+    bulletPoints: string[]
+  ): Promise<string> {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OpenAI API key não configurada')
+      }
+
+      const prompt = `Você é um recrutador experiente. Crie um feedback construtivo e personalizado para um candidato que não foi selecionado.
+
+DESCRIÇÃO DA VAGA:
+${jobDescription}
+
+PERFIL DO CANDIDATO:
+${candidateProfile}
+
+PONTOS ESPECÍFICOS DO RECRUTADOR:
+${bulletPoints.map((bp, i) => `${i + 1}. ${bp}`).join('\n')}
+
+Crie um feedback que:
+- Seja empático e respeitoso
+- Destaque os pontos positivos do candidato
+- Explique de forma construtiva as áreas de melhoria
+- Inclua os pontos específicos mencionados pelo recrutador
+- Seja específico e acionável
+- Termine de forma encorajadora
+
+O feedback deve ter entre 3-5 parágrafos e estar em português brasileiro.`
+
+      const completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um recrutador experiente e empático. Crie feedbacks construtivos e personalizados.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 800,
+      })
+
+      return completion.choices[0]?.message?.content || 'Feedback não disponível.'
+    } catch (error: any) {
+      console.error('Error generating personalized feedback:', error)
+      throw new Error('Erro ao gerar feedback personalizado')
+    }
+  }
+
+  async calculateAdvancedMatchScore(
+    job: { title: string; description: string; requirements?: string; tags?: any[] },
+    candidate: { bio?: string; skills?: string[]; experience?: any[]; education?: any[]; tags?: any[] }
+  ): Promise<{ score: number; reasons: string[] }> {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        // Fallback básico sem IA
+        return { score: 50, reasons: ['Análise de compatibilidade não disponível'] }
+      }
+
+      const jobTags = job.tags?.map((t: any) => t.name).join(', ') || ''
+      const candidateTags = candidate.tags?.map((t: any) => t.name).join(', ') || ''
+      const candidateSkills = candidate.skills?.join(', ') || ''
+
+      const prompt = `Analise a compatibilidade entre esta vaga e este candidato:
+
+VAGA:
+Título: ${job.title}
+Descrição: ${job.description}
+Requisitos: ${job.requirements || 'Não especificados'}
+Tags/Habilidades: ${jobTags}
+
+CANDIDATO:
+Bio: ${candidate.bio || 'Não informado'}
+Habilidades: ${candidateSkills}
+Tags: ${candidateTags}
+Experiência: ${JSON.stringify(candidate.experience || [])}
+Educação: ${JSON.stringify(candidate.education || [])}
+
+Retorne APENAS um JSON válido:
+{
+  "score": 85,
+  "reasons": [
+    "Razão 1 da compatibilidade",
+    "Razão 2 da compatibilidade",
+    "Área de melhoria 1",
+    "Área de melhoria 2"
+  ]
+}
+
+O score deve ser de 0 a 100. Inclua 2-3 razões positivas e 1-2 áreas de melhoria.`
+
+      const completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um especialista em matching de candidatos. Retorne APENAS JSON válido.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
+      })
+
+      let content = completion.choices[0]?.message?.content || '{"score": 50, "reasons": []}'
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        content = jsonMatch[0]
+      }
+
+      const parsed = JSON.parse(content)
+      return {
+        score: Math.min(100, Math.max(0, parsed.score || 50)),
+        reasons: parsed.reasons || [],
+      }
+    } catch (error: any) {
+      console.error('Error calculating advanced match score:', error)
+      return { score: 50, reasons: ['Erro ao calcular compatibilidade'] }
     }
   }
 }

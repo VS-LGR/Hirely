@@ -1,6 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import {
   generateJobDescription,
+  generateJobWithAI,
+  generatePersonalizedFeedback,
+  calculateAdvancedMatchScore,
   analyzeResume,
   suggestImprovements,
   uploadAndAnalyzeResume,
@@ -45,6 +48,9 @@ const handleMulterError = (err: any, req: Request, res: Response, next: NextFunc
 
 // Rotas para recrutadores
 aiRoutes.post('/generate-job-description', authenticate, authorize('recruiter', 'admin'), generateJobDescription)
+aiRoutes.post('/generate-job', authenticate, authorize('recruiter', 'admin'), generateJobWithAI)
+aiRoutes.post('/generate-feedback', authenticate, authorize('recruiter', 'admin'), generatePersonalizedFeedback)
+aiRoutes.post('/calculate-match-score', authenticate, authorize('recruiter', 'admin'), calculateAdvancedMatchScore)
 
 // Rotas para candidatos
 aiRoutes.post('/analyze-resume', authenticate, authorize('candidate'), analyzeResume)
