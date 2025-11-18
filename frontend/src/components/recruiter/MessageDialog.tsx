@@ -83,6 +83,7 @@ export function MessageDialog({
       // Marcar mensagens como lidas quando o diálogo é aberto
       markAsReadMutation.mutate()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, messages])
 
   useEffect(() => {
@@ -104,7 +105,9 @@ export function MessageDialog({
   }
 
   const isMyMessage = (message: Message) => {
-    return message.sender_id === user?.id
+    // Converter ambos para number para comparação correta
+    // user.id é string, message.sender_id é number
+    return Number(message.sender_id) === Number(user?.id)
   }
 
   return (

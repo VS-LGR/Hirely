@@ -1,0 +1,248 @@
+[33mcommit bde756cda60a602c73cbcfa5823f93e161d01f0d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 18:13:11 2025 -0300
+
+    Fix: Corrigir erro toFixed em todos os usos de match_score
+
+[33mcommit 9212853dc29c938b1bb0ce2fe2ccb6afe01e9f55[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 17:59:37 2025 -0300
+
+    MajorAdd: Sistema de comunicação Candidato > Recrutador
+
+[33mcommit 73be5aa5a5cc00ea39e18516eb12ac3d20f017ba[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 17:23:16 2025 -0300
+
+    Fix: Estilos dashboard
+
+[33mcommit bb366057fe86411981a93d7e5aba6a555acab6f3[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 17:14:26 2025 -0300
+
+    Add: Estilos Saude Mental e Seed de profissionais
+
+[33mcommit cb512c887b0fa70ba22ed5b5fc67cdc9c6e067f9[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 16:58:20 2025 -0300
+
+    Add: Saude Mental e Suporte
+
+[33mcommit 6c82110d0ba3a4b73c7946160b01bce421909c8f[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 15:05:20 2025 -0300
+
+    AddEffects: Animação com Scroll e mudança BG
+
+[33mcommit 9482c4e6ae6a7fab85aedea1f5f99e332b482418[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 14:53:11 2025 -0300
+
+    FixAceitaçãoCandidato: Aceite, Rejeição e Analise
+
+[33mcommit 331b07a9a8b9fe9d9f793aea2d64cebccf2cd19b[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 14:18:12 2025 -0300
+
+    FixAI: Tratamento de resposta.
+
+[33mcommit eaf107c21fa49e7422e05cf1ef29dcd38cb1de01[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 13:49:49 2025 -0300
+
+    FixAI: Erro de requisições criação de vagas
+
+[33mcommit 3be35e2e6738d9c89b0c6bb15cd5d53fcd3e9fde[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 13:27:28 2025 -0300
+
+    FixRecrutador: Salvar Perfil
+
+[33mcommit 7226c772ae4fd2f7987185403f2d7a9981344ff5[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 12:56:09 2025 -0300
+
+    Fix: Erro de Build
+
+[33mcommit 2ce3553d07483cd837e8490dcb9a034f5038c0dd[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 12:52:06 2025 -0300
+
+    Add&Fix: Recurtamento, Perfil Recrutador
+
+[33mcommit 3e7241799329b695d568f0faa41476eed58b77ea[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Tue Nov 18 12:06:03 2025 -0300
+
+    AddFunction: Funções de IA recrutadores
+
+[33mcommit 69668c2c5ff597e041616816e2dffcf4dd60644d[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 19:11:16 2025 -0300
+
+    AddAnimation: BG Anim
+
+[33mcommit 81de4ef403fac20cbe71ec644371a8b190cc998d[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 17:24:17 2025 -0300
+
+    FixReintegração: Cursos
+
+[33mcommit 2a790cf8e1543643812ee0b28e77db02156df55c[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 17:01:12 2025 -0300
+
+    FixReintegração: Erros
+
+[33mcommit cd91b0ca1a655701376f62ae44b296fbf26363fb[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 16:16:57 2025 -0300
+
+    FixReintegração: Cards
+
+[33mcommit 9c17158fe9294e2405a8cd29972740b2f8766c0e[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 16:08:17 2025 -0300
+
+    FixReintegração: Funções & Suporte
+
+[33mcommit c9e10a88392229ad2cecd6cbb8c5801f12a1d61c[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 15:51:05 2025 -0300
+
+    AddFunction: Reintegração
+
+[33mcommit 9fecb6add29f452aa45e3c2962e2ef0b276159af[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 14:22:18 2025 -0300
+
+    FixAI: Limite de plano v2
+
+[33mcommit d7c2e1da405768981a7239ba96cd082801f57bbb[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 13:57:41 2025 -0300
+
+    FixAI: Limite de plano
+
+[33mcommit e66c6404362931332b001f6461c6b9acf059bd2c[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 12:57:49 2025 -0300
+
+    FixResponsividade: Layout
+
+[33mcommit ad440d509ee964e7be37b34f05af6970f9fc14b4[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 12:22:11 2025 -0300
+
+    FixPerfil: Receber Null
+
+[33mcommit f9a06ef9e623f6078b9f32677c6adb13a1a3c91b[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 12:20:08 2025 -0300
+
+    FixPerfil: ResumeAnalise
+
+[33mcommit 9bc33f4aa0080cdce9a029f295c86a611ecba5a9[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Mon Nov 17 12:04:44 2025 -0300
+
+    FixPerfil: Salvar e publicar
+
+[33mcommit 5f9c60c9b3e453a2d36181857363ab4afc349499[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Fri Nov 14 17:21:47 2025 -0300
+
+    FixAI: Tratamento de respostas
+
+[33mcommit bdddfa0ce66da1b8c75f305ce9118c20b3b19e9e[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Fri Nov 14 17:13:14 2025 -0300
+
+    FixAI: Watson X tratamento de respostas
+
+[33mcommit d7c50bcd941d3d5684597ee6d22f16afab67b952[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Fri Nov 14 16:59:30 2025 -0300
+
+    FixAI: WatsonX Conversational
+
+[33mcommit 2e02452bd295d7dc965ae366509a5d2e8309cff1[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Fri Nov 14 16:48:42 2025 -0300
+
+    FixAI: WatsonX funcionalidade v2
+
+[33mcommit 514d1394233a3b3a7c352b8442d326a36f6b8636[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Fri Nov 14 16:03:05 2025 -0300
+
+    FixAI: WatsonX Modelo revisado.
+
+[33mcommit 6d848362a5af92344ec57b3ed44833948aa031a6[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Fri Nov 14 15:53:56 2025 -0300
+
+    FixAI: WatsonX funcionalidades
+
+[33mcommit e34282e67ea4009ace3ccae18d5b4f680c728e2e[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Fri Nov 14 15:38:12 2025 -0300
+
+    FixAI: Erros de deploy
+
+[33mcommit da2c4e507005b5f93ece120565a13993e59d66d4[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Fri Nov 14 15:34:58 2025 -0300
+
+    MajorFixAI: Mudança para WatsonX
+
+[33mcommit ebd918a27d6c287165d7fb97e2696b87da8457e3[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Thu Nov 13 23:19:37 2025 -0300
+
+    FixAI: Adiciona nova rota para busca no Watson e melhora a validação do Environment ID
+
+[33mcommit 5ba8a4d1ac847b611b078cb2abefb46ac06b6c2e[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Thu Nov 13 23:09:33 2025 -0300
+
+    FixAI: Correção de erro de Environment ID e implementação de Conversational Search
+
+[33mcommit affd63503d7da6fb2dbb0ca60c40b85f6bd06d10[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Thu Nov 13 22:56:22 2025 -0300
+
+    FixAI: Correção de erro de token inválido e implementação de Conversational Search
+
+[33mcommit f9ceb455f2b4de8b1a3e73b84544e3cd883a5afe[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Thu Nov 13 21:17:53 2025 -0300
+
+    FixAI: Fix Conversational v29.10293302
+
+[33mcommit 466d1129d5d74c0b775896590c0c2492c5c2202d[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Thu Nov 13 20:18:27 2025 -0300
+
+    FixAI: Resultados de analise de curriculo
+
+[33mcommit 127422ca5aa6ef6e75b575c59a0b4e0020d766b1[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Thu Nov 13 20:08:06 2025 -0300
+
+    FixAI: Resposta de erro de token inválido
+
+[33mcommit dce80d9554a9febdf48490452e7821784862f864[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Thu Nov 13 19:37:20 2025 -0300
+
+    FixAI: Recebimento de respostas em formato adequado
+
+[33mcommit c64ed09edd66acb8e51a323342656e9dbbbff9e3[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>
+Date:   Thu Nov 13 18:30:07 2025 -0300
+
+    FixAI: Rotas
+
+[33mcommit 947efc263841f19ee9b787ecc581e3ef1f4b247d[m
+Author: Lucas Gabriel Rodrigues <rm556129@FIAP.COM.BR>

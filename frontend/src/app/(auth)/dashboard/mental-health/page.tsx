@@ -231,6 +231,7 @@ export default function MentalHealthPage() {
                     <CardHeader>
                       <div className="flex items-start gap-4">
                         {professional.photo_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={professional.photo_url}
                             alt={professional.name}

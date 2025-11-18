@@ -1,0 +1,13 @@
+ backend/src/controllers/messageController.ts       | 240 [32m+++++++++++++++++++++[m
+ .../database/migrations/create_messages_table.sql  |  29 [32m+++[m
+ backend/src/index.ts                               |   5 [32m+[m[31m-[m
+ backend/src/routes/messages.ts                     |  23 [32m++[m
+ frontend/package.json                              |  39 [32m++[m[31m--[m
+ .../src/app/(auth)/dashboard/applications/page.tsx | 229 [32m++++++++++++++++++++[m
+ .../dashboard/jobs/[id]/applications/page.tsx      |  36 [32m+++[m[31m-[m
+ .../src/app/(auth)/dashboard/jobs/[id]/page.tsx    |   4 [32m+[m[31m-[m
+ frontend/src/app/(auth)/dashboard/jobs/page.tsx    |   4 [32m+[m[31m-[m
+ .../src/components/recruiter/InterviewDialog.tsx   |  18 [32m+[m[31m-[m
+ .../src/components/recruiter/MessageDialog.tsx     | 189 [32m++++++++++++++++[m
+ package-lock.json                                  |  11 [32m+[m
+ 12 files changed, 795 insertions(+), 32 deletions(-)
