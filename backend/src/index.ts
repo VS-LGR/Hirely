@@ -12,6 +12,7 @@ import { applicationRoutes } from './routes/applications'
 import { watsonSearchRoutes } from './routes/watsonSearch'
 import { courseRoutes } from './routes/courses'
 import mentalHealthRoutes from './routes/mentalHealth'
+import { messageRoutes } from './routes/messages'
 
 dotenv.config()
 
@@ -45,7 +46,8 @@ app.get('/', (req, res) => {
       watsonSearch: '/api/watson-search',
       watsonSearchEndpoint: '/api/watson-search/search',
       courses: '/api/courses',
-      mentalHealth: '/api/mental-health'
+      mentalHealth: '/api/mental-health',
+      messages: '/api/messages'
     }
   })
 })
@@ -66,6 +68,7 @@ app.use('/api/applications', applicationRoutes)
 app.use('/api/watson-search', watsonSearchRoutes)
 app.use('/api/courses', courseRoutes)
 app.use('/api/mental-health', mentalHealthRoutes)
+app.use('/api/messages', messageRoutes)
 
 // Error handler
 app.use(errorHandler)

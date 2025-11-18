@@ -45,9 +45,21 @@ export function InterviewDialog({
         status: 'accepted',
       })
 
-      // Aqui você pode adicionar lógica para salvar os detalhes da entrevista
-      // Por enquanto, apenas aceitamos a candidatura
-      // Em uma implementação futura, você pode criar uma tabela de entrevistas
+      // Enviar mensagem inicial com os detalhes da entrevista
+      const interviewMessage = `Olá! Sua candidatura foi aceita! 🎉
+
+Detalhes da entrevista:
+📅 Data: ${date}
+🕐 Horário: ${time}
+${location ? `📍 Local: ${location}` : ''}
+${notes ? `\n📝 Observações:\n${notes}` : ''}
+
+Por favor, confirme sua disponibilidade para este horário ou sugira uma alternativa.`
+
+      await api.post('/messages', {
+        application_id: applicationId,
+        content: interviewMessage,
+      })
 
       onSuccess()
       onOpenChange(false)

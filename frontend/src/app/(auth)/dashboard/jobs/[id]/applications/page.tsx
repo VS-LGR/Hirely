@@ -7,11 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { FeedbackDialog } from '@/components/recruiter/FeedbackDialog'
 import { InterviewDialog } from '@/components/recruiter/InterviewDialog'
+import { MessageDialog } from '@/components/recruiter/MessageDialog'
 import { Badge } from '@/components/ui/badge'
 import api from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { Tag } from '@/types'
-import { TrendingUp, BarChart3, RefreshCw, Calendar } from 'lucide-react'
+import { TrendingUp, BarChart3, RefreshCw, Calendar, MessageSquare } from 'lucide-react'
 
 interface Application {
   id: number
@@ -40,6 +41,7 @@ export default function JobApplicationsPage() {
   const jobId = params.id as string
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false)
   const [interviewDialogOpen, setInterviewDialogOpen] = useState(false)
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false)
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null)
   const [calculatingScore, setCalculatingScore] = useState<number | null>(null)
 
@@ -161,7 +163,13 @@ export default function JobApplicationsPage() {
         {applications && applications.length > 0 ? (
           <div className="space-y-4">
             {applications.map((application) => {
-              const score = application.match_score ?? 0
+              // Garantir que score seja sempre um número
+              const score = typeof application.match_score === 'number' 
+                ? application.match_score 
+                : application.match_score != null 
+                  ? Number(application.match_score) 
+                  : 0
+              
               const getScoreColor = () => {
                 if (score >= 80) return 'bg-success text-success-foreground'
                 if (score >= 60) return 'bg-info text-info-foreground'
@@ -193,9 +201,9 @@ export default function JobApplicationsPage() {
                             <BarChart3 className="h-3 w-3 text-brown-soft" />
                             <p className="text-xs text-brown-soft">Compatibilidade</p>
                           </div>
-                          {application.match_score != null ? (
+                          {application.match_score != null && !isNaN(score) ? (
                             <Badge className={`${getScoreColor()} text-base font-bold px-3 py-1`}>
-                              {score.toFixed(0)}%
+                              {Math.round(score)}%
                             </Badge>
                           ) : (
                             <Button
@@ -337,6 +345,20 @@ export default function JobApplicationsPage() {
                             </p>
                           </div>
                         )}
+                        {application.status === 'accepted' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedApplication(application)
+                              setMessageDialogOpen(true)
+                            }}
+                            className="w-full"
+                          >
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Abrir Conversa
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -372,6 +394,12 @@ export default function JobApplicationsPage() {
               applicationId={selectedApplication.id}
               candidateName={selectedApplication.candidate.name}
               onSuccess={handleInterviewSuccess}
+            />
+            <MessageDialog
+              open={messageDialogOpen}
+              onOpenChange={setMessageDialogOpen}
+              applicationId={selectedApplication.id}
+              candidateName={selectedApplication.candidate.name}
             />
           </>
         )}
