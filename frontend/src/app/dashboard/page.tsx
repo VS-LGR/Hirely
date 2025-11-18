@@ -37,14 +37,14 @@ export default function DashboardPage() {
 
   if (!mounted || !user) {
     return (
-      <div className="min-h-screen bg-bege-light flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-brown-dark">Carregando...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-bege-light">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-brown-dark mb-2">

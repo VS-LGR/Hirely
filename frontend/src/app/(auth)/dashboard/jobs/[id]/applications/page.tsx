@@ -137,14 +137,14 @@ export default function JobApplicationsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-bege-light flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <p className="text-brown-soft">Carregando...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-bege-light">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div>

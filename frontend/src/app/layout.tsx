@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
 import { AnimatedBackground } from '@/components/ui/animated-background'
+import { ScrollGradient } from '@/components/ui/scroll-gradient'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,6 +20,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={inter.className}>
+        <ScrollGradient />
         <AnimatedBackground />
         <Providers>{children}</Providers>
       </body>

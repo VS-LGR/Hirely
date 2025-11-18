@@ -56,7 +56,7 @@ export default function JobDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-bege-light flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <p className="text-brown-soft">Carregando...</p>
       </div>
     )
@@ -64,7 +64,7 @@ export default function JobDetailPage() {
 
   if (error || !job) {
     return (
-      <div className="min-h-screen bg-bege-light flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6">
             <p className="text-center text-error">Vaga não encontrada</p>
@@ -81,7 +81,7 @@ export default function JobDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bege-light">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <Button
           variant="ghost"

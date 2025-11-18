@@ -64,7 +64,7 @@ export default function RecruiterProfilePage() {
 
   if (user?.role !== 'recruiter') {
     return (
-      <div className="min-h-screen bg-bege-light flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6">
             <p className="text-center text-brown-soft">
