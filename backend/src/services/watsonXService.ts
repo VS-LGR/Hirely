@@ -91,34 +91,26 @@ class WatsonXServiceImpl implements AIService {
   }
 
   /**
-   * Chamar API de geração de texto do WatsonX
-   * Suporta tanto deployment (com prompt model) quanto text/generation direto
-   * @param forceDirectGeneration Se true, força uso de text/generation mesmo com deployment configurado
+   * Chamar API de text/generation diretamente (sem deployment)
+   * Usado como fallback quando deployment atinge limite de concorrência
    */
-  private async callTextGeneration(
+  private async callTextGenerationDirect(
     prompt: string,
     parameters?: {
       max_new_tokens?: number
       temperature?: number
       decoding_method?: string
-    },
-    forceDirectGeneration: boolean = false
+    }
   ): Promise<string> {
     if (!this.apiKey || !this.projectId || !this.apiUrl) {
       throw new Error('WatsonX não está configurado. Configure WATSONX_API_KEY, WATSONX_PROJECT_ID e WATSONX_API_URL')
     }
 
-    const token = await this.getIamToken()
-
-    // Se usar deployment E não forçar geração direta, usar chat deployment
-    if (this.useDeployment && this.deploymentId && !forceDirectGeneration) {
-      return await this.callDeploymentChat(prompt, parameters)
-    }
-
-    // Formato padrão: text/generation
     if (!this.modelId) {
       throw new Error('WATSONX_MODEL_ID não configurado. Configure WATSONX_MODEL_ID para usar text/generation direto.')
     }
+
+    const token = await this.getIamToken()
 
     const requestBody = {
       model_id: this.modelId,
@@ -166,7 +158,7 @@ class WatsonXServiceImpl implements AIService {
       const headers = error.response?.headers || {}
       const retryAfter = headers['retry-after'] || headers['Retry-After']
       
-      console.error('❌ Erro ao chamar WatsonX API:', {
+      console.error('❌ Erro ao chamar WatsonX API (text/generation direto):', {
         status,
         statusText: error.response?.statusText,
         data: error.response?.data,
@@ -174,11 +166,9 @@ class WatsonXServiceImpl implements AIService {
         retryAfter: retryAfter ? `${retryAfter} segundos` : 'não especificado',
         rateLimitRemaining: headers['x-ratelimit-remaining'] || headers['X-RateLimit-Remaining'],
         rateLimitReset: headers['x-ratelimit-reset'] || headers['X-RateLimit-Reset'],
-        fullHeaders: process.env.NODE_ENV === 'development' ? headers : undefined,
       })
 
       if (status === 401) {
-        // Token pode ter expirado, tentar renovar
         this.iamToken = null
         this.tokenExpiry = 0
         throw new Error('Token IAM expirado ou inválido. Tente novamente.')
@@ -190,13 +180,11 @@ class WatsonXServiceImpl implements AIService {
       }
 
       if (status === 429) {
-        // Rate limit excedido - pode ser por tempo (req/min) ou tokens
         const errorData = error.response?.data
         const errorMsg = errorData?.errors?.[0]?.message || errorData?.message || ''
         
         let message = 'Limite de requisições excedido.'
         
-        // Verificar se há informação sobre quando tentar novamente
         if (retryAfter) {
           const seconds = parseInt(retryAfter)
           const minutes = Math.ceil(seconds / 60)
@@ -205,24 +193,61 @@ class WatsonXServiceImpl implements AIService {
           message += ' Tente novamente em alguns minutos.'
         }
         
-        // Adicionar informação sobre tipo de limite se disponível
         if (errorMsg.includes('rate limit') || errorMsg.includes('too many requests')) {
           message += ' (Limite de requisições por período de tempo excedido - não relacionado ao limite de tokens mensais)'
         } else if (errorMsg.includes('quota') || errorMsg.includes('token')) {
           message += ' (Limite de tokens pode ter sido excedido)'
         }
         
-        console.error('⚠️ Rate Limit Detalhes:', {
-          retryAfter,
-          errorMessage: errorMsg,
-          suggestion: 'Verifique se há limites de requisições por minuto/hora no seu plano WatsonX',
-        })
-        
         throw new Error(message)
       }
 
       throw new Error(`Erro ao processar requisição: ${error.response?.data?.errors?.[0]?.message || error.message}`)
     }
+  }
+
+  /**
+   * Chamar API de geração de texto do WatsonX
+   * Suporta tanto deployment (com prompt model) quanto text/generation direto
+   * @param forceDirectGeneration Se true, força uso de text/generation mesmo com deployment configurado
+   */
+  private async callTextGeneration(
+    prompt: string,
+    parameters?: {
+      max_new_tokens?: number
+      temperature?: number
+      decoding_method?: string
+    },
+    forceDirectGeneration: boolean = false
+  ): Promise<string> {
+    if (!this.apiKey || !this.projectId || !this.apiUrl) {
+      throw new Error('WatsonX não está configurado. Configure WATSONX_API_KEY, WATSONX_PROJECT_ID e WATSONX_API_URL')
+    }
+
+    // Se usar deployment E não forçar geração direta, usar chat deployment
+    if (this.useDeployment && this.deploymentId && !forceDirectGeneration) {
+      try {
+        return await this.callDeploymentChat(prompt, parameters)
+      } catch (error: any) {
+        // Se deployment falhar com 429 (limite de concorrência), tentar fallback
+        if (error.response?.status === 429 && this.modelId) {
+          const errorMsg = error.response?.data?.errors?.[0]?.message || ''
+          const isConcurrentLimit = errorMsg.includes('concurrent requests') || 
+                                    errorMsg.includes('concurrent') ||
+                                    errorMsg.includes('limit 10')
+          
+          if (isConcurrentLimit) {
+            console.log('⚠️ Deployment atingiu limite de concorrência. Fazendo fallback para text/generation...')
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            return await this.callTextGenerationDirect(prompt, parameters)
+          }
+        }
+        throw error
+      }
+    }
+
+    // Formato padrão: text/generation
+    return await this.callTextGenerationDirect(prompt, parameters)
   }
 
   /**
@@ -367,9 +392,28 @@ class WatsonXServiceImpl implements AIService {
         const errorData = error.response?.data
         const errorMsg = errorData?.errors?.[0]?.message || errorData?.message || ''
         
+        // Verificar se é limite de requisições concorrentes (concurrent requests)
+        const isConcurrentLimit = errorMsg.includes('concurrent requests') || 
+                                  errorMsg.includes('concurrent') ||
+                                  errorMsg.includes('limit 10')
+        
+        // Criar erro customizado que será tratado no callTextGeneration para fazer fallback
+        const rateLimitError: any = new Error('Rate limit excedido')
+        rateLimitError.status = 429
+        rateLimitError.response = error.response
+        rateLimitError.isConcurrentLimit = isConcurrentLimit
+        
+        // Se for limite de concorrência, o callTextGeneration fará fallback automaticamente
+        // Apenas logar para debug
+        if (isConcurrentLimit) {
+          console.log('⚠️ Limite de requisições concorrentes detectado no deployment. O fallback será tentado automaticamente.')
+        }
+        
         let message = 'Limite de requisições excedido.'
         
-        if (retryAfter) {
+        if (isConcurrentLimit) {
+          message = 'Limite de requisições simultâneas atingido (10 requisições concorrentes). Tentando fallback automático...'
+        } else if (retryAfter) {
           const seconds = parseInt(retryAfter)
           const minutes = Math.ceil(seconds / 60)
           message += ` Aguarde ${minutes} minuto(s) antes de tentar novamente.`
@@ -386,10 +430,13 @@ class WatsonXServiceImpl implements AIService {
         console.error('⚠️ Rate Limit Detalhes (Deployment API):', {
           retryAfter,
           errorMessage: errorMsg,
-          suggestion: 'Verifique se há limites de requisições por minuto/hora no seu plano WatsonX. Isso é diferente do limite de tokens mensais.',
+          isConcurrentLimit,
+          suggestion: isConcurrentLimit 
+            ? 'Limite de requisições simultâneas (10). Fallback automático será tentado.'
+            : 'Verifique se há limites de requisições por minuto/hora no seu plano WatsonX. Isso é diferente do limite de tokens mensais.',
         })
         
-        throw new Error(message)
+        throw rateLimitError
       }
 
       throw new Error(`Erro ao processar requisição: ${error.response?.data?.errors?.[0]?.message || error.message}`)
