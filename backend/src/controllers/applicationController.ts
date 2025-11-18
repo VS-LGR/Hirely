@@ -408,11 +408,12 @@ export const getMyApplications = async (
 
     const { status } = req.query
 
-    let whereClause = 'a.candidate_id = $1'
-    const params: any[] = [req.user.id]
+    const userId = Number(req.user.id)
+    let whereClause = 'a.candidate_id = $2'
+    const params: any[] = [userId, req.user.id]
 
     if (status) {
-      whereClause += ' AND a.status = $2'
+      whereClause += ' AND a.status = $3'
       params.push(status)
     }
 
@@ -427,18 +428,28 @@ export const getMyApplications = async (
         j.remote as job_remote,
         j.salary_min,
         j.salary_max,
+        j.recruiter_id,
+        r.name as recruiter_name,
+        r.company as recruiter_company,
         COALESCE(
           json_agg(
             json_build_object('id', t.id, 'name', t.name, 'category', t.category)
           ) FILTER (WHERE t.id IS NOT NULL),
           '[]'::json
-        ) as job_tags
+        ) as job_tags,
+        COALESCE(
+          (SELECT COUNT(*)::int
+           FROM messages m
+           WHERE m.application_id = a.id AND m.receiver_id = $1 AND m.is_read = false),
+          0
+        ) as unread_messages_count
       FROM applications a
       INNER JOIN jobs j ON a.job_id = j.id
+      INNER JOIN users r ON j.recruiter_id = r.id
       LEFT JOIN job_tags jt ON j.id = jt.job_id
       LEFT JOIN tags t ON jt.tag_id = t.id
       WHERE ${whereClause}
-      GROUP BY a.id, j.id
+      GROUP BY a.id, j.id, r.id
       ORDER BY a.created_at DESC`,
       params
     )
@@ -470,6 +481,8 @@ export const getMyApplications = async (
         status: row.status,
         cover_letter: row.cover_letter,
         match_score: row.match_score,
+        feedback: row.feedback,
+        unread_messages_count: parseInt(row.unread_messages_count) || 0,
         created_at: row.created_at,
         updated_at: row.updated_at,
         job: {
@@ -481,6 +494,9 @@ export const getMyApplications = async (
           remote: row.job_remote,
           salary_min: row.salary_min,
           salary_max: row.salary_max,
+          recruiter_id: row.recruiter_id,
+          recruiter_name: row.recruiter_name,
+          recruiter_company: row.recruiter_company,
           tags,
         },
       }

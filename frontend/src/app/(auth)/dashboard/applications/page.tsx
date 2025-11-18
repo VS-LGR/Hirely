@@ -21,6 +21,7 @@ interface Application {
   cover_letter?: string
   match_score?: number
   feedback?: string
+  unread_messages_count?: number
   created_at: string
   updated_at: string
   job?: {
@@ -29,6 +30,8 @@ interface Application {
     company?: string
     location?: string
     recruiter_id: number
+    recruiter_name?: string
+    recruiter_company?: string
   }
 }
 
@@ -114,7 +117,7 @@ export default function MyApplicationsPage() {
                         {application.job?.title || 'Vaga não encontrada'}
                       </CardTitle>
                       <CardDescription>
-                        {application.job?.company && `${application.job.company} • `}
+                        {application.job?.recruiter_company && `${application.job.recruiter_company} • `}
                         {application.job?.location && application.job.location}
                       </CardDescription>
                     </div>
@@ -167,10 +170,38 @@ export default function MyApplicationsPage() {
                           setSelectedApplication(application)
                           setMessageDialogOpen(true)
                         }}
-                        className="w-full"
+                        className="w-full relative"
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Abrir Conversa
+                        {application.unread_messages_count && application.unread_messages_count > 0 && (
+                          <span className="ml-2 px-2 py-0.5 text-xs font-bold bg-white text-success rounded-full">
+                            {application.unread_messages_count}
+                          </span>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+
+                  {(application.status === 'pending' || application.status === 'reviewed') && 
+                   application.unread_messages_count && application.unread_messages_count > 0 && (
+                    <div className="p-3 rounded-md bg-info/10 border border-info/20">
+                      <p className="text-sm text-brown-soft mb-2">
+                        Você tem {application.unread_messages_count} mensagem(ns) não lida(s) do recrutador.
+                      </p>
+                      <Button
+                        onClick={() => {
+                          setSelectedApplication(application)
+                          setMessageDialogOpen(true)
+                        }}
+                        variant="outline"
+                        className="w-full relative"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Ver Mensagens
+                        <span className="ml-2 px-2 py-0.5 text-xs font-bold bg-info text-white rounded-full">
+                          {application.unread_messages_count}
+                        </span>
                       </Button>
                     </div>
                   )}
@@ -181,17 +212,23 @@ export default function MyApplicationsPage() {
                         Ver Vaga
                       </Button>
                     </Link>
-                    {application.status === 'accepted' && (
+                    {(application.status === 'accepted' || 
+                      (application.unread_messages_count && application.unread_messages_count > 0)) && (
                       <Button
                         variant="default"
                         onClick={() => {
                           setSelectedApplication(application)
                           setMessageDialogOpen(true)
                         }}
-                        className="flex-1"
+                        className="flex-1 relative"
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Conversar
+                        {application.unread_messages_count && application.unread_messages_count > 0 && (
+                          <span className="ml-2 px-2 py-0.5 text-xs font-bold bg-white text-primary rounded-full">
+                            {application.unread_messages_count}
+                          </span>
+                        )}
                       </Button>
                     )}
                   </div>
@@ -219,7 +256,7 @@ export default function MyApplicationsPage() {
             open={messageDialogOpen}
             onOpenChange={setMessageDialogOpen}
             applicationId={selectedApplication.id}
-            recruiterName={selectedApplication.job?.title}
+            recruiterName={selectedApplication.job?.recruiter_name || selectedApplication.job?.recruiter_company || 'Recrutador'}
           />
         )}
       </div>
