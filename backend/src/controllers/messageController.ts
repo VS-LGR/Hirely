@@ -60,7 +60,20 @@ export const sendMessage = async (
         message: result.rows[0],
       },
     })
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Erro ao enviar mensagem:', error)
+    console.error('Detalhes do erro:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint,
+    })
+    
+    // Se a tabela não existir, retornar erro mais específico
+    if (error.code === '42P01') {
+      throw createError('Tabela de mensagens não encontrada. Execute a migration create_messages_table.sql no banco de dados.', 500)
+    }
+    
     next(error)
   }
 }
@@ -124,7 +137,20 @@ export const getMessages = async (
         messages: result.rows,
       },
     })
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Erro ao buscar mensagens:', error)
+    console.error('Detalhes do erro:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint,
+    })
+    
+    // Se a tabela não existir, retornar erro mais específico
+    if (error.code === '42P01') {
+      throw createError('Tabela de mensagens não encontrada. Execute a migration create_messages_table.sql no banco de dados.', 500)
+    }
+    
     next(error)
   }
 }
@@ -181,7 +207,11 @@ export const markMessagesAsRead = async (
       success: true,
       message: 'Mensagens marcadas como lidas',
     })
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Erro ao marcar mensagens como lidas:', error)
+    if (error.code === '42P01') {
+      throw createError('Tabela de mensagens não encontrada. Execute a migration create_messages_table.sql no banco de dados.', 500)
+    }
     next(error)
   }
 }
@@ -233,7 +263,17 @@ export const getUnreadCount = async (
         unreadCount: parseInt(result.rows[0].count) || 0,
       },
     })
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Erro ao contar mensagens não lidas:', error)
+    if (error.code === '42P01') {
+      // Se a tabela não existir, retornar 0 em vez de erro
+      return res.json({
+        success: true,
+        data: {
+          unreadCount: 0,
+        },
+      })
+    }
     next(error)
   }
 }

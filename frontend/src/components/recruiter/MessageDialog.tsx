@@ -43,7 +43,7 @@ export function MessageDialog({
   const [messageContent, setMessageContent] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { data: messages, isLoading } = useQuery<Message[]>({
+  const { data: messages, isLoading, error: messagesError } = useQuery<Message[]>({
     queryKey: ['messages', applicationId],
     queryFn: async () => {
       const response = await api.get(`/messages/application/${applicationId}`)
@@ -51,6 +51,7 @@ export function MessageDialog({
     },
     enabled: open && !!applicationId,
     refetchInterval: open ? 3000 : false, // Atualizar a cada 3 segundos quando aberto
+    retry: 2, // Tentar apenas 2 vezes antes de falhar
   })
 
   const sendMessageMutation = useMutation({
@@ -126,6 +127,18 @@ export function MessageDialog({
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-6 w-6 animate-spin text-brown-soft" />
+            </div>
+          ) : messagesError ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-4">
+              <p className="text-error font-semibold mb-2">Erro ao carregar mensagens</p>
+              <p className="text-sm text-brown-soft mb-4">
+                {(messagesError as any)?.response?.data?.error?.message || 
+                 (messagesError as any)?.message || 
+                 'Erro desconhecido'}
+              </p>
+              <p className="text-xs text-brown-soft">
+                Se o erro mencionar "tabela não encontrada", execute a migration create_messages_table.sql no Supabase.
+              </p>
             </div>
           ) : messages && messages.length > 0 ? (
             messages.map((message) => (
