@@ -121,7 +121,7 @@ export default function JobApplicationsPage() {
         {applications && applications.length > 0 ? (
           <div className="space-y-4">
             {applications.map((application) => {
-              const score = application.match_score || 0
+              const score = application.match_score ?? 0
               const getScoreColor = () => {
                 if (score >= 80) return 'bg-success text-success-foreground'
                 if (score >= 60) return 'bg-info text-info-foreground'
@@ -148,14 +148,14 @@ export default function JobApplicationsPage() {
                         </CardDescription>
                       </div>
                       <div className="flex items-center gap-3">
-                        {application.match_score !== null && (
+                        {application.match_score != null && (
                           <div className="text-right">
                             <div className="flex items-center gap-1 mb-1">
                               <BarChart3 className="h-3 w-3 text-brown-soft" />
                               <p className="text-xs text-brown-soft">Compatibilidade</p>
                             </div>
                             <Badge className={`${getScoreColor()} text-base font-bold px-3 py-1`}>
-                              {application.match_score.toFixed(0)}%
+                              {score.toFixed(0)}%
                             </Badge>
                           </div>
                         )}
