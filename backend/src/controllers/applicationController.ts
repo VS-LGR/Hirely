@@ -181,6 +181,7 @@ export const getApplicationsByJob = async (
         status: row.status,
         cover_letter: row.cover_letter,
         match_score: row.match_score,
+        feedback: row.feedback,
         created_at: row.created_at,
         updated_at: row.updated_at,
         candidate: {
@@ -298,15 +299,21 @@ export const updateApplicationStatus = async (
     }
 
     const { id } = req.params
-    const { status, feedback } = req.body
+    const { status, feedback, match_score } = req.body
 
-    if (!status || !['pending', 'reviewed', 'accepted', 'rejected'].includes(status)) {
+    // Se status for fornecido, validar
+    if (status && !['pending', 'reviewed', 'accepted', 'rejected'].includes(status)) {
       throw createError('Status inválido', 400)
     }
 
     // Se for rejeitar, feedback é obrigatório
     if (status === 'rejected' && (!feedback || typeof feedback !== 'string' || feedback.trim().length === 0)) {
       throw createError('Feedback é obrigatório ao rejeitar um candidato', 400)
+    }
+
+    // Validar match_score se fornecido
+    if (match_score !== undefined && (typeof match_score !== 'number' || match_score < 0 || match_score > 100)) {
+      throw createError('Match score deve ser um número entre 0 e 100', 400)
     }
 
     // Verificar se a candidatura existe e se a vaga pertence ao recrutador
@@ -329,15 +336,48 @@ export const updateApplicationStatus = async (
       throw createError('Acesso negado', 403)
     }
 
-    // Atualizar status e feedback (se fornecido)
+    // Construir query dinâmica baseada nos campos fornecidos
+    const updates: string[] = []
+    const values: any[] = []
+    let paramCount = 1
+
+    if (status) {
+      updates.push(`status = $${paramCount}`)
+      values.push(status)
+      paramCount++
+    }
+
+    if (feedback !== undefined) {
+      if (status === 'rejected') {
+        updates.push(`feedback = $${paramCount}`)
+        values.push(feedback.trim())
+      } else {
+        updates.push(`feedback = $${paramCount}`)
+        values.push(feedback || null)
+      }
+      paramCount++
+    }
+
+    if (match_score !== undefined) {
+      updates.push(`match_score = $${paramCount}`)
+      values.push(match_score)
+      paramCount++
+    }
+
+    if (updates.length === 0) {
+      throw createError('Nenhum campo para atualizar', 400)
+    }
+
+    updates.push('updated_at = NOW()')
+    values.push(id)
+
+    // Atualizar aplicação
     const result = await db.query(
       `UPDATE applications 
-       SET status = $1, 
-           feedback = CASE WHEN $2 IS NOT NULL THEN $2 ELSE feedback END,
-           updated_at = NOW()
-       WHERE id = $3
+       SET ${updates.join(', ')}
+       WHERE id = $${paramCount}
        RETURNING *`,
-      [status, status === 'rejected' ? feedback.trim() : null, id]
+      values
     )
 
     res.json({

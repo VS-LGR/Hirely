@@ -6,11 +6,12 @@ import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { FeedbackDialog } from '@/components/recruiter/FeedbackDialog'
+import { InterviewDialog } from '@/components/recruiter/InterviewDialog'
 import { Badge } from '@/components/ui/badge'
 import api from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { Tag } from '@/types'
-import { TrendingUp, BarChart3 } from 'lucide-react'
+import { TrendingUp, BarChart3, RefreshCw, Calendar } from 'lucide-react'
 
 interface Application {
   id: number
@@ -19,6 +20,7 @@ interface Application {
   status: 'pending' | 'reviewed' | 'accepted' | 'rejected'
   cover_letter?: string
   match_score?: number
+  feedback?: string
   created_at: string
   updated_at: string
   candidate: {
@@ -37,7 +39,9 @@ export default function JobApplicationsPage() {
   const user = useAuthStore((state) => state.user)
   const jobId = params.id as string
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false)
+  const [interviewDialogOpen, setInterviewDialogOpen] = useState(false)
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null)
+  const [calculatingScore, setCalculatingScore] = useState<number | null>(null)
 
   const { data: applications, isLoading } = useQuery<Application[]>({
     queryKey: ['job-applications', jobId],
@@ -67,6 +71,42 @@ export default function JobApplicationsPage() {
     queryClient.invalidateQueries({ queryKey: ['job-applications', jobId] })
     setFeedbackDialogOpen(false)
     setSelectedApplication(null)
+  }
+
+  const handleInterviewSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['job-applications', jobId] })
+    setInterviewDialogOpen(false)
+    setSelectedApplication(null)
+  }
+
+  const handleCalculateScore = async (application: Application) => {
+    setCalculatingScore(application.id)
+    try {
+      const response = await api.post('/ai/calculate-match-score', {
+        job_id: Number(jobId),
+        candidate_id: application.candidate_id,
+      })
+
+      const newScore = response.data.data.matchScore
+
+      // Atualizar o score na aplicação
+      await api.put(`/applications/${application.id}/status`, {
+        status: application.status,
+        match_score: newScore,
+      })
+
+      queryClient.invalidateQueries({ queryKey: ['job-applications', jobId] })
+    } catch (error: any) {
+      console.error('Erro ao calcular score:', error)
+      alert(error.response?.data?.error?.message || 'Erro ao calcular score de compatibilidade')
+    } finally {
+      setCalculatingScore(null)
+    }
+  }
+
+  const handleAcceptClick = (application: Application) => {
+    setSelectedApplication(application)
+    setInterviewDialogOpen(true)
   }
 
   const getStatusColor = (status: string) => {
@@ -148,17 +188,37 @@ export default function JobApplicationsPage() {
                         </CardDescription>
                       </div>
                       <div className="flex items-center gap-3">
-                        {application.match_score != null && (
-                          <div className="text-right">
-                            <div className="flex items-center gap-1 mb-1">
-                              <BarChart3 className="h-3 w-3 text-brown-soft" />
-                              <p className="text-xs text-brown-soft">Compatibilidade</p>
-                            </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-1 mb-1">
+                            <BarChart3 className="h-3 w-3 text-brown-soft" />
+                            <p className="text-xs text-brown-soft">Compatibilidade</p>
+                          </div>
+                          {application.match_score != null ? (
                             <Badge className={`${getScoreColor()} text-base font-bold px-3 py-1`}>
                               {score.toFixed(0)}%
                             </Badge>
-                          </div>
-                        )}
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCalculateScore(application)}
+                              disabled={calculatingScore === application.id}
+                              className="h-7 text-xs"
+                            >
+                              {calculatingScore === application.id ? (
+                                <>
+                                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                  Calculando...
+                                </>
+                              ) : (
+                                <>
+                                  <BarChart3 className="h-3 w-3 mr-1" />
+                                  Calcular Score
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
                             application.status
@@ -228,15 +288,11 @@ export default function JobApplicationsPage() {
                         </Button>
                         <Button
                           size="sm"
-                          onClick={() =>
-                            updateStatusMutation.mutate({
-                              applicationId: application.id,
-                              status: 'accepted',
-                            })
-                          }
+                          onClick={() => handleAcceptClick(application)}
                           disabled={updateStatusMutation.isPending}
                         >
-                          Aceitar
+                          <Calendar className="h-4 w-4 mr-1" />
+                          Aceitar e Marcar Entrevista
                         </Button>
                         <Button
                           variant="destructive"
@@ -252,15 +308,11 @@ export default function JobApplicationsPage() {
                       <>
                         <Button
                           size="sm"
-                          onClick={() =>
-                            updateStatusMutation.mutate({
-                              applicationId: application.id,
-                              status: 'accepted',
-                            })
-                          }
+                          onClick={() => handleAcceptClick(application)}
                           disabled={updateStatusMutation.isPending}
                         >
-                          Aceitar
+                          <Calendar className="h-4 w-4 mr-1" />
+                          Aceitar e Marcar Entrevista
                         </Button>
                         <Button
                           variant="destructive"
@@ -277,11 +329,11 @@ export default function JobApplicationsPage() {
                         <p className="text-sm text-brown-soft">
                           Candidatura {getStatusLabel(application.status).toLowerCase()}
                         </p>
-                        {application.status === 'rejected' && (application as any).feedback && (
+                        {application.status === 'rejected' && application.feedback && (
                           <div className="p-3 rounded-md bg-bege-medium border border-brown-light">
                             <p className="text-xs font-semibold text-brown-dark mb-1">Feedback:</p>
                             <p className="text-sm text-brown-soft whitespace-pre-line">
-                              {(application as any).feedback}
+                              {application.feedback}
                             </p>
                           </div>
                         )}
@@ -304,15 +356,24 @@ export default function JobApplicationsPage() {
         )}
 
         {selectedApplication && (
-          <FeedbackDialog
-            open={feedbackDialogOpen}
-            onOpenChange={setFeedbackDialogOpen}
-            applicationId={selectedApplication.id}
-            jobId={Number(jobId)}
-            candidateId={selectedApplication.candidate_id}
-            candidateName={selectedApplication.candidate.name}
-            onSuccess={handleFeedbackSuccess}
-          />
+          <>
+            <FeedbackDialog
+              open={feedbackDialogOpen}
+              onOpenChange={setFeedbackDialogOpen}
+              applicationId={selectedApplication.id}
+              jobId={Number(jobId)}
+              candidateId={selectedApplication.candidate_id}
+              candidateName={selectedApplication.candidate.name}
+              onSuccess={handleFeedbackSuccess}
+            />
+            <InterviewDialog
+              open={interviewDialogOpen}
+              onOpenChange={setInterviewDialogOpen}
+              applicationId={selectedApplication.id}
+              candidateName={selectedApplication.candidate.name}
+              onSuccess={handleInterviewSuccess}
+            />
+          </>
         )}
       </div>
     </div>
