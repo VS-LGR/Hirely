@@ -35,6 +35,10 @@
     --ring: 166 139 111; /* #A68B6F */
     
     --radius: 0.5rem;
+    
+    /* Cor de destaque - Verde sage suave que combina com a paleta bege/marrom */
+    --accent-green: 156 175 136; /* #9CAF88 - Verde sage suave */
+    --accent-green-foreground: 245 241 232; /* #F5F1E8 */
   }
 }
 

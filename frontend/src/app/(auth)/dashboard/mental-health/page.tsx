@@ -93,7 +93,9 @@ export default function MentalHealthPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <Heart className="h-8 w-8 text-primary" />
+            <div className="w-12 h-12 rounded-lg bg-[#9CAF88]/20 flex items-center justify-center">
+              <Heart className="h-6 w-6 text-[#7A9570]" />
+            </div>
             <h1 className="text-4xl font-bold text-brown-dark">Cuidados com a Saúde Mental</h1>
           </div>
           <p className="text-brown-soft text-lg">
@@ -102,12 +104,12 @@ export default function MentalHealthPage() {
         </div>
 
         <Tabs defaultValue="tips" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="tips" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-bege-medium">
+            <TabsTrigger value="tips" className="flex items-center gap-2 data-[state=active]:bg-bege-light data-[state=active]:text-brown-dark">
               <Brain className="h-4 w-4" />
               Dicas e Textos
             </TabsTrigger>
-            <TabsTrigger value="professionals" className="flex items-center gap-2">
+            <TabsTrigger value="professionals" className="flex items-center gap-2 data-[state=active]:bg-bege-light data-[state=active]:text-brown-dark">
               <Users className="h-4 w-4" />
               Profissionais Afiliados
             </TabsTrigger>

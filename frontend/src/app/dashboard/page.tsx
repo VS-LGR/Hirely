@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import api from '@/lib/api'
-import { TrendingUp, Heart } from 'lucide-react'
+import { TrendingUp, Heart, Users, FileText } from 'lucide-react'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -99,70 +99,90 @@ export default function DashboardPage() {
           </div>
         ) : (
           <>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
-              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105">
-                <Link href="/dashboard/jobs">
-                  <CardHeader>
-                    <CardTitle>Buscar Vagas</CardTitle>
-                    <CardDescription>Encontre oportunidades ideais para você</CardDescription>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 mb-6">
+              <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
+                <Link href="/dashboard/jobs" className="flex flex-col h-full">
+                  <CardHeader className="flex-1">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                      <Users className="h-6 w-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-xl mb-2">Buscar Vagas</CardTitle>
+                    <CardDescription className="text-base">
+                      Encontre oportunidades ideais para você
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="mt-auto">
                     <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
                       Buscar Vagas
                     </Button>
                   </CardContent>
                 </Link>
               </Card>
-              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105">
-                <Link href="/dashboard/profile">
-                  <CardHeader>
-                    <CardTitle>Meu Perfil</CardTitle>
-                    <CardDescription>Complete seu perfil profissional</CardDescription>
+              
+              <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
+                <Link href="/dashboard/profile" className="flex flex-col h-full">
+                  <CardHeader className="flex-1">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                      <FileText className="h-6 w-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-xl mb-2">Meu Perfil</CardTitle>
+                    <CardDescription className="text-base">
+                      Complete seu perfil profissional
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="mt-auto">
                     <Button variant="outline" className="w-full border-brown-soft text-brown-dark hover:bg-brown-light transition-all duration-300">
                       Editar Perfil
                     </Button>
                   </CardContent>
                 </Link>
               </Card>
-              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-                <Link href="/dashboard/reintegration">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-primary" />
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 mb-6">
+              <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full flex flex-col bg-gradient-to-br from-primary/8 to-primary/3 border-primary/20">
+                <Link href="/dashboard/reintegration" className="flex flex-col h-full">
+                  <CardHeader className="flex-1">
+                    <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
+                      <TrendingUp className="h-6 w-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-xl mb-2 flex items-center gap-2">
                       Reintegração ao Mercado
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-base">
                       Descubra novas áreas e cursos para se recolocar no mercado do futuro
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="mt-auto">
                     <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
                       Explorar
                     </Button>
                   </CardContent>
                 </Link>
               </Card>
-              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105 bg-gradient-to-br from-primary/8 to-primary/3 border-primary/20">
-                <Link href="/dashboard/mental-health">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Heart className="h-5 w-5 text-primary" />
+              
+              <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full flex flex-col bg-gradient-to-br from-[#9CAF88]/15 to-[#9CAF88]/8 border-[#9CAF88]/30">
+                <Link href="/dashboard/mental-health" className="flex flex-col h-full">
+                  <CardHeader className="flex-1">
+                    <div className="w-12 h-12 rounded-lg bg-[#9CAF88]/20 flex items-center justify-center mb-4">
+                      <Heart className="h-6 w-6 text-[#7A9570]" />
+                    </div>
+                    <CardTitle className="text-xl mb-2 flex items-center gap-2">
                       Saúde Mental
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-base">
                       Dicas para organizar suas ideias e profissionais afiliados com preços acessíveis
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
+                  <CardContent className="mt-auto">
+                    <Button className="w-full bg-[#9CAF88] hover:bg-[#8BA075] text-white transition-all duration-300">
                       Acessar
                     </Button>
                   </CardContent>
                 </Link>
               </Card>
             </div>
+
             <Card className="hover:shadow-lg transition-all duration-300 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-primary/20">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
