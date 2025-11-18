@@ -302,7 +302,17 @@ class WatsonXServiceImpl implements AIService {
       // Log completo da resposta para debug
       console.log('WatsonX Deployment Response:', JSON.stringify(response.data, null, 2))
 
-      // Formato 1: Array direto (formato mais comum do WatsonX chat)
+      // Formato 1: response.data.choices[0].message.content (formato chat.completion)
+      // { choices: [{ index: 0, message: { role: "assistant", content: "..." }, finish_reason: "stop" }] }
+      if (response.data.choices && Array.isArray(response.data.choices) && response.data.choices.length > 0) {
+        const firstChoice = response.data.choices[0]
+        if (firstChoice.message) {
+          const content = firstChoice.message.content || firstChoice.message.text
+          if (content) return content.trim()
+        }
+      }
+
+      // Formato 2: Array direto (formato mais comum do WatsonX chat)
       // [{ index: 0, message: { role: "assistant", content: "..." }, finish_reason: "stop" }]
       if (Array.isArray(response.data) && response.data.length > 0) {
         const firstItem = response.data[0]
@@ -314,7 +324,7 @@ class WatsonXServiceImpl implements AIService {
         }
       }
 
-      // Formato 2: response.data.results (formato alternativo)
+      // Formato 3: response.data.results (formato alternativo)
       if (response.data.results && Array.isArray(response.data.results) && response.data.results.length > 0) {
         const result = response.data.results[0]
         
@@ -340,7 +350,7 @@ class WatsonXServiceImpl implements AIService {
         }
       }
 
-      // Formato 3: Nível raiz direto
+      // Formato 4: Nível raiz direto
       if (response.data.message) {
         const content = response.data.message.content || response.data.message.text
         if (content) return content.trim()
