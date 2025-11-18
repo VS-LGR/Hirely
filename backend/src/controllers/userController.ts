@@ -190,4 +190,76 @@ export const updateUserProfile = async (
   }
 }
 
+// Visualizar perfil público de recrutador (acessível por candidatos)
+export const getRecruiterPublicProfile = async (
+  req: AuthRequest | any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params
+
+    if (!id) {
+      throw createError('ID do recrutador é obrigatório', 400)
+    }
+
+    const result = await db.query(
+      `SELECT u.id, u.name, u.bio, u.company, u.industry, u.website, u.location, u.company_size, u.company_description, u.created_at,
+       COALESCE(
+         json_agg(
+           json_build_object('id', t.id, 'name', t.name, 'category', t.category)
+         ) FILTER (WHERE t.id IS NOT NULL),
+         '[]'
+       ) as tags,
+       COUNT(DISTINCT j.id) as total_jobs
+       FROM users u
+       LEFT JOIN user_tags ut ON u.id = ut.user_id
+       LEFT JOIN tags t ON ut.tag_id = t.id
+       LEFT JOIN jobs j ON j.recruiter_id = u.id AND j.status = 'active'
+       WHERE u.id = $1 AND u.role = 'recruiter'
+       GROUP BY u.id`,
+      [id]
+    )
+
+    if (result.rows.length === 0) {
+      throw createError('Recrutador não encontrado', 404)
+    }
+
+    const recruiter = result.rows[0]
+
+    // Buscar vagas ativas do recrutador
+    const jobsResult = await db.query(
+      `SELECT id, title, description, location, remote, type, salary_min, salary_max, created_at
+       FROM jobs
+       WHERE recruiter_id = $1 AND status = 'active'
+       ORDER BY created_at DESC
+       LIMIT 5`,
+      [id]
+    )
+
+    res.json({
+      success: true,
+      data: {
+        recruiter: {
+          id: recruiter.id,
+          name: recruiter.name,
+          bio: recruiter.bio,
+          company: recruiter.company,
+          industry: recruiter.industry,
+          website: recruiter.website,
+          location: recruiter.location,
+          company_size: recruiter.company_size,
+          company_description: recruiter.company_description,
+          tags: recruiter.tags || [],
+          total_jobs: parseInt(recruiter.total_jobs) || 0,
+          created_at: recruiter.created_at,
+        },
+        recent_jobs: jobsResult.rows,
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 
