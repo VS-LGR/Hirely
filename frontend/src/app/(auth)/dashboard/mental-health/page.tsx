@@ -180,15 +180,26 @@ export default function MentalHealthPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="online-only"
-                      checked={onlineOnly}
-                      onChange={(e) => setOnlineOnly(e.target.checked)}
-                      className="rounded border-brown-light"
-                    />
-                    <Label htmlFor="online-only" className="cursor-pointer">
+                  <div className="flex items-center space-x-3">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        id="online-only"
+                        checked={onlineOnly}
+                        onChange={(e) => setOnlineOnly(e.target.checked)}
+                        className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border-2 border-brown-light bg-bege-light transition-all checked:border-primary checked:bg-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                      />
+                      <svg
+                        className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <Label htmlFor="online-only" className="cursor-pointer text-sm font-medium text-brown-dark">
                       Apenas atendimento online
                     </Label>
                   </div>

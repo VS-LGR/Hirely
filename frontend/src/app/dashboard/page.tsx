@@ -99,7 +99,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
               <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105">
                 <Link href="/dashboard/jobs">
                   <CardHeader>
@@ -144,11 +144,11 @@ export default function DashboardPage() {
                   </CardContent>
                 </Link>
               </Card>
-              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105 bg-gradient-to-br from-pink-50 to-rose-50 border-pink-200">
+              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105 bg-gradient-to-br from-primary/8 to-primary/3 border-primary/20">
                 <Link href="/dashboard/mental-health">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Heart className="h-5 w-5 text-pink-600" />
+                      <Heart className="h-5 w-5 text-primary" />
                       Saúde Mental
                     </CardTitle>
                     <CardDescription>
@@ -156,7 +156,7 @@ export default function DashboardPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button className="w-full bg-pink-600 hover:bg-pink-700 text-white transition-all duration-300">
+                    <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
                       Acessar
                     </Button>
                   </CardContent>
