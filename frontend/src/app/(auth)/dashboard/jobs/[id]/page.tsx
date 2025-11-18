@@ -112,14 +112,14 @@ export default function JobDetailPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {job.match_score && user?.role === 'candidate' && (
+            {job.match_score != null && user?.role === 'candidate' && (
               <div className="p-4 rounded-md bg-bege-medium border border-brown-light">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-brown-dark">
                     Compatibilidade com seu perfil
                   </span>
                   <span className="text-2xl font-bold text-primary">
-                    {job.match_score}%
+                    {Math.round(typeof job.match_score === 'number' ? job.match_score : Number(job.match_score))}%
                   </span>
                 </div>
                 <p className="text-xs text-brown-soft mt-1">

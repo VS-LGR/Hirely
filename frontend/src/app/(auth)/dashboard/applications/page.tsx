@@ -140,7 +140,7 @@ export default function MyApplicationsPage() {
                   {application.match_score != null && (
                     <div className="p-3 rounded-md bg-bege-medium border border-brown-light">
                       <p className="text-sm font-medium text-brown-dark">
-                        Compatibilidade: {Math.round(application.match_score)}%
+                        Compatibilidade: {Math.round(typeof application.match_score === 'number' ? application.match_score : Number(application.match_score))}%
                       </p>
                     </div>
                   )}

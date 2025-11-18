@@ -103,10 +103,10 @@ export default function JobsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {job.match_score && (
+                {job.match_score != null && (
                   <div className="mb-2">
                     <span className="text-xs font-medium text-primary">
-                      {job.match_score}% de compatibilidade
+                      {Math.round(typeof job.match_score === 'number' ? job.match_score : Number(job.match_score))}% de compatibilidade
                     </span>
                   </div>
                 )}
