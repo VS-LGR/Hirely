@@ -239,6 +239,74 @@ Você pode configurar domínios customizados:
 - 2GB bandwidth/mês
 - 50.000 API requests/mês
 
+## Checklist de Deploy
+
+Use este checklist para garantir que todos os passos foram concluídos antes e durante o deploy.
+
+### Pré-Deploy
+
+#### Supabase
+- [ ] Projeto criado no Supabase
+- [ ] Credenciais anotadas (URL, Service Role Key, Database URL)
+- [ ] Bucket `resumes` criado no Storage
+- [ ] Políticas de acesso configuradas para o bucket
+- [ ] Migrações executadas (via SQL Editor ou CLI)
+- [ ] Tags populadas (seedTags executado)
+
+#### Código
+- [ ] Todas as alterações commitadas
+- [ ] Build do backend passa sem erros (`npm run build`)
+- [ ] Build do frontend passa sem erros (`npm run build`)
+- [ ] Testes locais funcionando
+
+#### Variáveis de Ambiente
+- [ ] Backend `.env` configurado localmente (para testes)
+- [ ] Frontend `.env.local` configurado localmente (para testes)
+- [ ] Lista de variáveis necessárias documentada
+
+### Deploy Backend (Vercel)
+
+- [ ] Projeto criado no Vercel Dashboard
+- [ ] Repositório GitHub conectado
+- [ ] Root Directory: `backend`
+- [ ] Build Command: `npm run build`
+- [ ] Output Directory: (vazio)
+- [ ] Variáveis de ambiente configuradas (veja Passo 3.2)
+- [ ] Deploy executado
+- [ ] URL do backend anotada
+- [ ] Health check funcionando: `/health` retorna `{"status":"ok"}`
+- [ ] Logs verificados (sem erros críticos)
+
+### Deploy Frontend (Vercel)
+
+- [ ] Projeto criado no Vercel Dashboard
+- [ ] Repositório GitHub conectado
+- [ ] Root Directory: `frontend`
+- [ ] Framework Preset: Next.js (detectado automaticamente)
+- [ ] Variáveis de ambiente configuradas: `NEXT_PUBLIC_API_URL`
+- [ ] Deploy executado
+- [ ] URL do frontend anotada
+- [ ] Site carrega sem erros no console
+
+### Pós-Deploy
+
+- [ ] `CORS_ORIGIN` atualizado no backend com URL do frontend
+- [ ] Redeploy do backend executado (ou aguardado automático)
+- [ ] Teste de login no frontend
+- [ ] Teste de registro de usuário
+- [ ] Teste de criação de vaga (recrutador)
+- [ ] Teste de upload de currículo (candidato)
+- [ ] Teste de busca de vagas
+- [ ] Teste de aplicação a vaga
+
+### Verificação Final
+
+- [ ] Logs do Vercel sem erros
+- [ ] Logs do Supabase sem erros
+- [ ] Performance aceitável
+- [ ] Todas as funcionalidades principais testadas
+- [ ] Domínio customizado configurado (opcional)
+
 ## Próximos Passos
 
 1. Configure domínio customizado (opcional)
